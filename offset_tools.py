@@ -65,7 +65,7 @@ def sky_to_idl(ta_pos, targ_pos, aper, pa):
     return idl_coords
 
 
-def plot_apers(ax, attmat, aper_dict, format_dict):
+def plot_apers(ax, attmat, aper_dict, format_dict={}):
     """
     Helper function to plot the apertures for a given part of the TA sequence
     ax : axis to plot on
