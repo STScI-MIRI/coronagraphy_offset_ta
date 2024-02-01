@@ -423,10 +423,17 @@ def compute_offsets(
     Parameters
     ----------
     slew_from: dict
+      A dictionary containing the label and position of the TA target, set by
+      the user in compute_offsets.py
     slew_to: dict
+      A dictionary containing the label and position of the science target, set by
+      the user in compute_offsets.py
     v3: float
+      The PA_V3 angle of the telescope for this observation
     coron_ids : list[str]
+      A list read in from compute_offsets.py with only one of the coronagraph choices uncommentet
     show_plots : bool = True
+      If True, display the diagnostic plots. If False, only print the offsets.
 
     Output
     ------
@@ -513,8 +520,3 @@ def compute_offsets(
             idl_coords,
             offset,
         )
-        
-# if __name__ == "__main__":
-#     compute_offsets(slew_from)
-#     if show_plots == True:
-#         make_plots()
