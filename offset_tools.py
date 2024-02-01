@@ -30,6 +30,37 @@ import pysiaf
 from pysiaf import Siaf
 
 
+def create_attmat(
+        position : SkyCoord,
+        aper : pysiaf.aperture.JwstAperture,
+        pa : float,
+) -> np.ndarray :
+    """
+    Create an attitude matrix for JWST when the reference point of a particular
+    aperture is pointed at a given position for a specified PA
+
+    Parameters
+    ----------
+    position : SkyCoord
+      skycoord position on the sky
+    aper : pysiaf.aperture.JwstAperture
+      pySIAF-defined aperture object
+    pa : float
+      PA_V3 angle of the telescope in degrees
+
+    Output
+    ------
+    attmat : np.ndarray
+      matrix that pySIAF can use to specify the attitude of the telescope
+    """
+    v2, v3 = aper.reference_point('tel')
+    # compute the attitude matrix when we're pointing directly at the TA target
+    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3,
+                                                    ra=position.ra.deg,
+                                                    dec=position.dec.deg,
+                                                    pa=pa)
+    return attmat
+
 def sky_to_idl(ta_pos, targ_pos, aper, pa):
     """
     Convert RA and Dec positions of a TA star and its target with an offset
@@ -50,12 +81,7 @@ def sky_to_idl(ta_pos, targ_pos, aper, pa):
       a dictionary of IDL x, y coordinates for the TA star and the science target
       the TA star coordinates should be very close to 0
     """
-    v2, v3 = aper.reference_point('tel')
-    # compute the attitude matrix when we're pointing directly at the TA target
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3, 
-                                                    ra=ta_pos.ra.deg, 
-                                                    dec=ta_pos.dec.deg, 
-                                                    pa=pa)
+    attmat = create_attmat(ta_pos, aper, pa)
     aper.set_attitude_matrix(attmat)
     idl_coords = {}
     # ta star - should be close to 0
@@ -101,6 +127,7 @@ def plot_before_offset_slew(aper_dict, idl_coords):
     ax.set_aspect("equal")
     ax.grid(True, ls='--', c='grey', alpha=0.5)
     return fig
+
 
 def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords):
     """Plot the TA sequence as seen by the detector"""
@@ -189,6 +216,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords):
     fig.tight_layout()
     return fig
 
+
 def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
 
     nrows = 4
@@ -212,14 +240,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     ax.set_title(f"Step 1: UR TA region")
 
     # center the attitude matrix at the Outer TA ROI
-    aper = aper_dict['UR']
-    # the telescope is now pointing the *outer* TA region at the TA star
-    v2, v3 = aper.reference_point('tel')
-    # compute the attitude matrix when we're pointing directly at the TA target
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3, 
-                                                    ra=star_positions['TACQ'].ra.deg, 
-                                                    dec=star_positions['TACQ'].dec.deg, 
-                                                    pa=star_positions['v3'])
+    attmat = create_attmat(star_positions['TACQ'], aper_dict['UR'], star_positions['v3'])
     formatting = dict(c=colors[0], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -229,14 +250,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     ax.set_title(f"Step 2: CUR TA region")
 
     # center the attitude matrix at the Inner TA ROI
-    aper = aper_dict['CUR']
-    # the telescope is now pointing the *inner* TA region at the TA star
-    v2, v3 = aper.reference_point('tel')
-    # compute the attitude matrix when we're pointing the inner TA region at the TA target
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3, 
-                                                    ra=star_positions['TACQ'].ra.deg, 
-                                                    dec=star_positions['TACQ'].dec.deg, 
-                                                    pa=star_positions['v3'])
+    attmat = create_attmat(star_positions['TACQ'], aper_dict['CUR'], star_positions['v3'])
     formatting = dict(c=colors[1], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -247,14 +261,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     ax.set_title("Step 3: Centered")
 
     # center the attitude matrix on the coronagraph reference position
-    aper = aper_dict['coro']
-    # the telescope is now pointing the center of the coronagraph at the TA star
-    v2, v3 = aper.reference_point('tel')
-    # compute the attitude matrix when we're pointing directly at the TA target
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3, 
-                                                    ra=star_positions['TACQ'].ra.deg, 
-                                                    dec=star_positions['TACQ'].dec.deg, 
-                                                    pa=star_positions['v3'])
+    attmat = create_attmat(star_positions['TACQ'], aper_dict['coro'], star_positions['v3'])
     formatting = dict(c=colors[2], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -262,21 +269,13 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
 
     # Plot the apertures and sources after the offset slew
     ax = axes[3]
-    aper = aper_dict['coro']
-    # note that the two methods of computing the slew below are equivalent
-    # v2, v3 = aper.idl_to_tel(*(offset))
-    # ra = star_positions['TACQ'].ra.degree
-    # dec = star_positions['TACQ'].dec.degree
-    v2, v3 = aper.reference_point('tel')
-    # compute the RA and Dec of the pointing using the offset values you found earlier
-    # note that you must CHANGE THE SIGN OF THE SLEW with respect to the previous plot
-    # if you're right, you should end up right on the position of the star
+    # compute the ra, dec of the offset from the TA position
+    attmat = create_attmat(star_positions['TACQ'], aper_dict['coro'], star_positions['v3'])
+    aper_dict['coro'].set_attitude_matrix(attmat)
     ra, dec = aper_dict['coro'].idl_to_sky(*(-offset))
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3, 
-                                                    ra=ra, 
-                                                    dec=dec, 
-                                                    pa=star_positions['v3'])
     tel_sky = SkyCoord(ra=ra, dec=dec, unit='deg', frame='icrs')
+    # compute the new attitude matrix at the slew position
+    attmat = create_attmat(tel_sky, aper_dict['coro'], star_positions['v3'])
     ax.set_title(f"Step 4: Offset applied\nTel-Targ sep: {tel_sky.separation(star_positions['Target']).to('mas'):0.2e}")
     formatting = dict(c=colors[3], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
@@ -296,6 +295,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     fig.tight_layout()
     return fig
 
+
 def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
     """Plot the TA sequence on the sky, all on one axis"""
     nrows = 1
@@ -312,14 +312,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
                c='k', label='Target', marker='*', s=100)    
 
     # We start TA in the outer TA region
-    aper = aper_dict["UR"]
-    # the telescope is now pointing the *outer* TA region at the TA star
-    v2, v3 = aper.reference_point('tel')
-    # compute the attitude matrix when we're pointing directly at the TA target
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3, 
-                                                    ra=star_positions['TACQ'].ra.deg, 
-                                                    dec=star_positions['TACQ'].dec.deg, 
-                                                    pa=star_positions['v3'])
+    attmat = create_attmat(star_positions['TACQ'], aper_dict['UR'], star_positions['v3'])
     formatting = dict(c=colors[0], alpha=1, ls='dotted')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [], 
@@ -328,30 +321,17 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
 
 
     # Continue to step 2 of TA, in the inner TA region
-    aper = aper_dict["CUR"]
-    # the telescope is now pointing the *outer* TA region at the TA star
-    v2, v3 = aper.reference_point('tel')
-    # compute the attitude matrix when we're pointing directly at the TA target
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3, 
-                                                    ra=star_positions['TACQ'].ra.deg, 
-                                                    dec=star_positions['TACQ'].dec.deg, 
-                                                    pa=star_positions['v3'])
+    attmat = create_attmat(star_positions['TACQ'], aper_dict['CUR'], star_positions['v3'])
     formatting = dict(c=colors[1], alpha=1, ls='dashdot')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [], 
             **formatting,
             label='Step 2: Inner TA step')    
 
-    # plot the final TA before the offset is applied
 
+    # plot the final TA before the offset is applied
     # the telescope is now pointing the center of the coronagraph at the TA star
-    aper = aper_dict['coro']
-    v2, v3 = aper.reference_point('tel')
-    # compute the attitude matrix when we're pointing directly at the TA target
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3, 
-                                                    ra=star_positions['TACQ'].ra.deg, 
-                                                    dec=star_positions['TACQ'].dec.deg, 
-                                                    pa=star_positions['v3'])
+    attmat = create_attmat(star_positions['TACQ'], aper_dict['coro'], star_positions['v3'])
     formatting = dict(c=colors[2], alpha=1, ls='dashed')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [],
@@ -360,14 +340,11 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
 
 
     # the telescope now places the TA star at the commanded offset
-    aper = aper_dict['coro']
-    v2, v3 = aper.reference_point('tel')
     # note that you must CHANGE THE SIGN OF THE OFFSET to get the position of the reference point
-    ra, dec = aper.idl_to_sky(*(-offset))
-    attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3,
-                                                    ra=ra,
-                                                    dec=dec,
-                                                    pa=star_positions['v3'])
+    ra, dec = aper_dict['coro'].idl_to_sky(*(-offset))
+    tel_sky = SkyCoord(ra=ra, dec=dec, unit='deg', frame='icrs')
+    attmat = create_attmat(tel_sky, aper_dict['coro'], star_positions['v3'])
+
     formatting = dict(c=colors[3], alpha=1, ls='solid')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [],
