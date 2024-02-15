@@ -129,7 +129,7 @@ def plot_apers(ax, attmat, aper_dict, format_dict={}):
 
 
 def plot_before_offset_slew(aper_dict, idl_coords):
-    """Plot the scene on the detector when you're pointed at the TA target"""
+    """Plot the scene on the detector when you're pointed at the acquisition target"""
     # plot 1 : POV of the detector
     fig, ax = plt.subplots(1, 1, )
     ax.set_title("""Positions *before* offset slew""")
@@ -137,8 +137,8 @@ def plot_before_offset_slew(aper_dict, idl_coords):
     aper_dict['mask'].plot(ax=ax, label=False, frame=frame, c='C0')
     aper_dict['coro'].plot(ax=ax, label=False, frame=frame, c='C1', mark_ref=True)
 
-    ax.scatter(0, 0, c='k', label='TACQ', marker='x', s=100)
-    ax.scatter(*idl_coords['targ'], label="Target", marker="*", c='k')
+    ax.scatter(0, 0, c='k', label='ACQ', marker='x', s=100)
+    ax.scatter(*idl_coords['targ'], label="SCI", marker="*", c='k')
 
     ax.legend()
     ax.set_aspect("equal")
@@ -178,7 +178,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords):
     ax.scatter(*ta_pos, 
                c='k', label='TA star', marker='x', s=100)
     ax.scatter(*targ_pos,
-               c='k', label='Target', marker='*', s=100)
+               c='k', label='SCI', marker='*', s=100)
 
     # put the legend on this plot
     ax.legend(loc='best', ncol=1, fontsize='small', markerscale=0.7)
@@ -197,7 +197,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords):
     ax.scatter(*ta_pos,
                c='k', label='TA star', marker='x', s=100)
     ax.scatter(*targ_pos,
-               c='k', label='Target', marker='*', s=100)
+               c='k', label='SCI', marker='*', s=100)
 
     # TA star centered
     ax = axes[2]
@@ -207,7 +207,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords):
     ax.scatter(*aper.idl_to_det(*idl_coords['ta']),
                c='k', label='TA star', marker='x', s=100)
     ax.scatter(*aper.idl_to_det(*idl_coords['targ']),
-               c='k', label='Target', marker='*', s=100)
+               c='k', label='SCI', marker='*', s=100)
 
     # Offset applied
     ax = axes[3]
@@ -221,7 +221,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords):
     ax.scatter(*ta_pos, 
                c='k', label='TA star', marker='x', s=100)
     ax.scatter(*targ_pos, 
-               c='k', label='Target', marker='*', s=100)
+               c='k', label='SCI', marker='*', s=100)
 
 
     for ax in axes:
@@ -243,12 +243,12 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
                              sharex=True, sharey=True)
 
     for ax in axes.ravel():
-        ta_pos = (star_positions['TACQ'].ra.deg, star_positions['TACQ'].dec.deg)
-        targ_pos = (star_positions['Target'].ra.deg, star_positions['Target'].dec.deg)    
+        ta_pos = (star_positions['ACQ'].ra.deg, star_positions['ACQ'].dec.deg)
+        targ_pos = (star_positions['SCI'].ra.deg, star_positions['SCI'].dec.deg)    
         ax.scatter(*ta_pos,
-                   c='k', label='TACQ', marker='x', s=100)
+                   c='k', label='ACQ', marker='x', s=100)
         ax.scatter(*targ_pos,
-                   c='k', label='Target', marker='*', s=100)    
+                   c='k', label='SCI', marker='*', s=100)    
 
 
 
@@ -257,7 +257,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     ax.set_title(f"Step 1: UR TA region")
 
     # center the attitude matrix at the Outer TA ROI
-    attmat = create_attmat(star_positions['TACQ'], aper_dict['UR'], star_positions['v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['UR'], star_positions['v3'])
     formatting = dict(c=colors[0], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -267,7 +267,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     ax.set_title(f"Step 2: CUR TA region")
 
     # center the attitude matrix at the Inner TA ROI
-    attmat = create_attmat(star_positions['TACQ'], aper_dict['CUR'], star_positions['v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['CUR'], star_positions['v3'])
     formatting = dict(c=colors[1], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -278,7 +278,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     ax.set_title("Step 3: Centered")
 
     # center the attitude matrix on the coronagraph reference position
-    attmat = create_attmat(star_positions['TACQ'], aper_dict['coro'], star_positions['v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['v3'])
     formatting = dict(c=colors[2], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -287,13 +287,13 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     # Plot the apertures and sources after the offset slew
     ax = axes[3]
     # compute the ra, dec of the offset from the TA position
-    attmat = create_attmat(star_positions['TACQ'], aper_dict['coro'], star_positions['v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['v3'])
     aper_dict['coro'].set_attitude_matrix(attmat)
     ra, dec = aper_dict['coro'].idl_to_sky(*(-offset))
     tel_sky = SkyCoord(ra=ra, dec=dec, unit='deg', frame='icrs')
     # compute the new attitude matrix at the slew position
     attmat = create_attmat(tel_sky, aper_dict['coro'], star_positions['v3'])
-    ax.set_title(f"Step 4: Offset applied\nTel-Targ sep: {tel_sky.separation(star_positions['Target']).to('mas'):0.2e}")
+    ax.set_title(f"Step 4: Offset applied\nTel-Targ sep: {tel_sky.separation(star_positions['SCI']).to('mas'):0.2e}")
     formatting = dict(c=colors[3], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -321,15 +321,15 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
     fig.suptitle(f"TA sequence, in RA/Dec")
     colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
 
-    ta_pos = (star_positions['TACQ'].ra.deg, star_positions['TACQ'].dec.deg)
-    targ_pos = (star_positions['Target'].ra.deg, star_positions['Target'].dec.deg)    
+    ta_pos = (star_positions['ACQ'].ra.deg, star_positions['ACQ'].dec.deg)
+    targ_pos = (star_positions['SCI'].ra.deg, star_positions['SCI'].dec.deg)    
     ax.scatter(*ta_pos,
-               c='k', label='TACQ', marker='x', s=100)
+               c='k', label='ACQ', marker='x', s=100)
     ax.scatter(*targ_pos,
-               c='k', label='Target', marker='*', s=100)    
+               c='k', label='SCI', marker='*', s=100)    
 
     # We start TA in the outer TA region
-    attmat = create_attmat(star_positions['TACQ'], aper_dict['UR'], star_positions['v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['UR'], star_positions['v3'])
     formatting = dict(c=colors[0], alpha=1, ls='dotted')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [], 
@@ -338,7 +338,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
 
 
     # Continue to step 2 of TA, in the inner TA region
-    attmat = create_attmat(star_positions['TACQ'], aper_dict['CUR'], star_positions['v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['CUR'], star_positions['v3'])
     formatting = dict(c=colors[1], alpha=1, ls='dashdot')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [], 
@@ -348,7 +348,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
 
     # plot the final TA before the offset is applied
     # the telescope is now pointing the center of the coronagraph at the TA star
-    attmat = create_attmat(star_positions['TACQ'], aper_dict['coro'], star_positions['v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['v3'])
     formatting = dict(c=colors[2], alpha=1, ls='dashed')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [],
@@ -409,8 +409,8 @@ def make_plots(
     ta_sequence = {}
     for aper_id in ['UR', 'CUR', 'coro']:
         aper = aper_dict[aper_id]
-        ta_sequence[aper_id] = sky_to_idl(star_positions['TACQ'], 
-                                          star_positions['Target'], 
+        ta_sequence[aper_id] = sky_to_idl(star_positions['ACQ'], 
+                                          star_positions['SCI'], 
                                           aper, 
                                           star_positions['v3'])
     ta_sequence['slew'] = {k: np.array(v) + offset for k, v in ta_sequence['coro'].items()}
@@ -464,15 +464,15 @@ def compute_offsets(
     coron_id = coron_ids[0]
     star_positions = {
         # the TA star
-        'TACQ': slew_from['position'],
+        'ACQ': slew_from['position'],
         # The star you will eventually slew to
-        'Target': slew_to['position'],
+        'SCI': slew_to['position'],
         'v3': v3
     }
 
     # Offsets
-    sep = star_positions['TACQ'].separation(star_positions['Target']).to(units.arcsec)
-    pa = star_positions['TACQ'].position_angle(star_positions['Target']).to(units.deg)
+    sep = star_positions['ACQ'].separation(star_positions['SCI']).to(units.arcsec)
+    pa = star_positions['ACQ'].position_angle(star_positions['SCI']).to(units.deg)
     print("Separation and PA: ", f"{sep.mas:0.2f} mas, {pa.degree:0.2f} deg\n")
 
 
@@ -490,8 +490,8 @@ def compute_offsets(
     all_apers['mask'] = miri[f'MIRIM_MASK{coron_id}']
 
 
-    idl_coords = sky_to_idl(star_positions['TACQ'], 
-                            star_positions['Target'],
+    idl_coords = sky_to_idl(star_positions['ACQ'], 
+                            star_positions['SCI'],
                             all_apers['coro'],
                             star_positions['v3'])
     # The offset you apply is as if you were moving the science target - i.e.
@@ -500,26 +500,26 @@ def compute_offsets(
 
     print("Computing offset command values from:")
     print(f"\t{slew_from['label']}")
-    print("\t\t RA:\t ", slew_from['position'].ra.degree)
-    print("\t\t Dec:\t", slew_from['position'].dec.degree)
+    print("\t\t RA: \t", slew_from['position'].ra.degree)
+    print("\t\t Dec: \t", slew_from['position'].dec.degree)
     print("to")
     print(f"\t{slew_to['label']}")
-    print("\t\t RA:\t ", slew_to['position'].ra.degree)
-    print("\t\t Dec:\t", slew_to['position'].dec.degree)
+    print("\t\t RA: \t", slew_to['position'].ra.degree)
+    print("\t\t Dec: \t", slew_to['position'].dec.degree)
 
     print("\n")
-    print("After TA but before slewing, the position of the TACQ star should be close to (0, 0):")
+    print("After TA but before slewing, the position of the ACQ star should be close to (0, 0):")
     print(f"\t", ', '.join(f"{i:+0.3e}" for i in idl_coords['ta']), "arcsec")
-    print("... and the position of the Target star is:")
+    print("... and the position of the SCI star is:")
     print(f"\t", ', '.join(f"{i:+0.3e}" for i in idl_coords['targ']), "arcsec")
     print("")
 
-    print("When the TACQ star is centered, the Target star is at:")
+    print("When the ACQ star is centered, the SCI star is at:")
     print(f"\tdX: {idl_coords['targ'][0]:+2.6f} arcsec")
     print(f"\tdY: {idl_coords['targ'][1]:+2.6f} arcsec")
     print("\n")
 
-    print("Therefore, the commanded offsets that will move the coronagraph from the TACQ star to the Target are:")
+    print("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
     print(f"\tdX: {offset[0]:+2.6f} arcsec")
     print(f"\tdY: {offset[1]:+2.6f} arcsec")
 
