@@ -128,10 +128,13 @@ def plot_apers(ax, attmat, aper_dict, format_dict={}):
             aper.plot(ax=ax, label=False, frame='sky', fill=False, **formatting)
 
 
-def plot_before_offset_slew(aper_dict, idl_coords):
+def plot_before_offset_slew(aper_dict, idl_coords, star_positions={}):
     """Plot the scene on the detector when you're pointed at the acquisition target"""
     # plot 1 : POV of the detector
     fig, ax = plt.subplots(1, 1, )
+    if star_positions != {}:
+        targ_label= f"{star_positions['ACQ_label']} --> {star_positions['SCI_label']}"
+        fig.suptitle(targ_label)
     ax.set_title("""Positions *before* offset slew""")
     frame = 'idl' # options are: tel (telescope), det (detector), sci (aperture)
     aper_dict['mask'].plot(ax=ax, label=False, frame=frame, c='C0')
@@ -146,12 +149,17 @@ def plot_before_offset_slew(aper_dict, idl_coords):
     return fig
 
 
-def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords):
+def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions={}):
     """Plot the TA sequence as seen by the detector"""
     nrows = 1
     ncols = 4
     fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(2*ncols, 4*nrows), sharex=True, sharey=True)
-    fig.suptitle(f"TA sequence, as seen by the detector")
+    
+    if star_positions != {}:
+        targ_label= f"{star_positions['ACQ_label']} --> {star_positions['SCI_label']}\n"
+    else:
+        targ_label=''
+    fig.suptitle(targ_label + f"TA sequence, as seen by the detector")
 
     # plot the SIAF apertures on every plot
     for ax in axes:
@@ -242,6 +250,9 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
                              #figsize=(6*ncols, 10*nrows),
                              sharex=True, sharey=True)
 
+    targ_label= f"{star_positions['ACQ_label']} --> {star_positions['SCI_label']}"
+    fig.suptitle(targ_label)
+
     for ax in axes.ravel():
         ta_pos = (star_positions['ACQ'].ra.deg, star_positions['ACQ'].dec.deg)
         targ_pos = (star_positions['SCI'].ra.deg, star_positions['SCI'].dec.deg)    
@@ -318,7 +329,10 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
     nrows = 1
     ncols = 1
     fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(15, 5))
-    fig.suptitle(f"TA sequence, in RA/Dec")
+
+    targ_label= f"{star_positions['ACQ_label']} --> {star_positions['SCI_label']}"
+    fig.suptitle(f"{targ_label}\nTA sequence, in RA/Dec")
+
     colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
 
     ta_pos = (star_positions['ACQ'].ra.deg, star_positions['ACQ'].dec.deg)
@@ -393,7 +407,13 @@ def make_plots(
 
     Parameters
     ----------
-    idl_coords : dictionary of the idl coordinates of each component at each phase of the TA sequence
+    aper_dict : dict,
+      a dict of the SIAF apertures to plot
+    star_positions : dict,
+      dictionary of the sky coordinates of the ACQ and SCI targets
+    idl_coords : dict,
+      dictionary of the idl coordinates of each component at each phase of the TA sequence
+    offset : np.ndarray,
 
     Output
     ------
@@ -402,7 +422,7 @@ def make_plots(
     """
     colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
 
-    fig1 = plot_before_offset_slew(aper_dict, idl_coords)
+    fig1 = plot_before_offset_slew(aper_dict, idl_coords, star_positions)
 
     # Plot 2: The TA sequence on the detector
     # compute the positions at each step of the sequence
@@ -414,7 +434,7 @@ def make_plots(
                                           aper, 
                                           star_positions['v3'])
     ta_sequence['slew'] = {k: np.array(v) + offset for k, v in ta_sequence['coro'].items()}
-    fig2 = plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords)
+    fig2 = plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions)
 
 
     # Plot 3: The TA sequence in RA and Dec, split into separate plots
@@ -467,7 +487,10 @@ def compute_offsets(
         'ACQ': slew_from['position'],
         # The star you will eventually slew to
         'SCI': slew_to['position'],
-        'v3': v3
+        'v3': v3,
+        # for plotting
+        'ACQ_label' : slew_from['label'],
+        'SCI_label' : slew_to['label'],
     }
 
     # Offsets
