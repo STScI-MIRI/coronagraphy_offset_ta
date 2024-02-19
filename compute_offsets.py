@@ -521,11 +521,11 @@ def compute_offsets(
     # the negative of its position
     offset = -1*np.array(idl_coords['targ'])
 
-    print("Computing offset command values from:")
+    print("Computing offset command values to slew from:")
     print(f"\t{slew_from['label']}")
     print("\t\t RA: \t", slew_from['position'].ra.degree)
     print("\t\t Dec: \t", slew_from['position'].dec.degree)
-    print("to")
+    print("to:")
     print(f"\t{slew_to['label']}")
     print("\t\t RA: \t", slew_to['position'].ra.degree)
     print("\t\t Dec: \t", slew_to['position'].dec.degree)
@@ -535,16 +535,11 @@ def compute_offsets(
     print(f"\t", ', '.join(f"{i:+0.3e}" for i in idl_coords['ta']), "arcsec")
     print("... and the position of the SCI star is:")
     print(f"\t", ', '.join(f"{i:+0.3e}" for i in idl_coords['targ']), "arcsec")
-    print("")
 
+    print("\n")
     print("When the ACQ star is centered, the SCI star is at:")
     print(f"\tdX: {idl_coords['targ'][0]:+2.6f} arcsec")
     print(f"\tdY: {idl_coords['targ'][1]:+2.6f} arcsec")
-    print("\n")
-
-    print("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
-    print(f"\tdX: {offset[0]:+2.6f} arcsec")
-    print(f"\tdY: {offset[1]:+2.6f} arcsec")
 
     print("\n")
     print("Sanity check: on-sky angular separation should be the same distance as that of the slew.")
@@ -555,6 +550,11 @@ def compute_offsets(
     for row in check_str:
         print("{: >20} {: >20}".format(*row))
 
+    print("\n")
+    print("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
+    print(f"\tdX: {offset[0]:+2.6f} arcsec")
+    print(f"\tdY: {offset[1]:+2.6f} arcsec")
+    print("\n")
 
     if show_plots == True:
         make_plots(
@@ -581,6 +581,7 @@ if __name__ == "__main__":
     # in units of degrees, and in the ICRS frame.
     # Users who are comfortable with astropy.coordiantes.SkyCoord may set them
     # as they like.
+    # The `label` is used for identifying each component in plots and print output
 
     # The "slew_to" variable stores the position of the final target of the observations
     slew_to = {
