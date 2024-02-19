@@ -86,8 +86,10 @@ show_plots = False
 
 if __name__ == "__main__":
     dx, dy = compute_offsets.compute_offsets(slew_from, slew_to, v3, coron_id,
+                                             verbose=False,
                                              show_plots=show_plots,
                                              return_offsets=True)
-    print('dx:', dx)
-    print('dy:', dy)
+    print("Offsets: ")
+    print(f"\tdx: {dx:+0.5f}")
+    print(f"\tdy: {dy:+0.5f}")
 

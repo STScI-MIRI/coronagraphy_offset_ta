@@ -452,6 +452,7 @@ def compute_offsets(
         slew_to: dict,
         v3: float,
         coron_ids : list[str],
+        verbose : bool = True,
         show_plots : bool = True,
         return_offsets : bool = False
 ) -> np.ndarray :
@@ -472,6 +473,8 @@ def compute_offsets(
       A list read in from compute_offsets.py with only one of the coronagraph choices uncommentet
     show_plots : bool = True
       If True, display the diagnostic plots. If False, only print the offsets.
+    verbose : bool = True
+      print diagnostics and offsets to screen. Set to False if you're returning the values to variables in a script. 
     return_offsets : bool = False
       If True, return an array of dx and dy offsets
 
@@ -493,10 +496,12 @@ def compute_offsets(
         'SCI_label' : slew_to['label'],
     }
 
+    print_output = []
+
     # Offsets
     sep = star_positions['ACQ'].separation(star_positions['SCI']).to(units.arcsec)
     pa = star_positions['ACQ'].position_angle(star_positions['SCI']).to(units.deg)
-    print("Separation and PA: ", f"{sep.mas:0.2f} mas, {pa.degree:0.2f} deg\n")
+    print_output.append(f"Separation and PA: {sep.mas:0.2f} mas, {pa.degree:0.2f} deg\n")
 
 
     # Siaf
@@ -521,40 +526,44 @@ def compute_offsets(
     # the negative of its position
     offset = -1*np.array(idl_coords['targ'])
 
-    print("Computing offset command values to slew from:")
-    print(f"\t{slew_from['label']}")
-    print("\t\t RA: \t", slew_from['position'].ra.degree)
-    print("\t\t Dec: \t", slew_from['position'].dec.degree)
-    print("to:")
-    print(f"\t{slew_to['label']}")
-    print("\t\t RA: \t", slew_to['position'].ra.degree)
-    print("\t\t Dec: \t", slew_to['position'].dec.degree)
+    print_output.append("Computing offset command values to slew from:")
+    print_output.append(f"\t{slew_from['label']}")
+    print_output.append(f"\t\t RA: \t {slew_from['position'].ra.degree}")
+    print_output.append(f"\t\t Dec: \t {slew_from['position'].dec.degree}")
+    print_output.append(f"to:")
+    print_output.append(f"\t{slew_to['label']}")
+    print_output.append(f"\t\t RA: \t {slew_to['position'].ra.degree}")
+    print_output.append(f"\t\t Dec: \t {slew_to['position'].dec.degree}")
 
-    print("\n")
-    print("After TA but before slewing, the position of the ACQ star should be close to (0, 0):")
-    print(f"\t", ', '.join(f"{i:+0.3e}" for i in idl_coords['ta']), "arcsec")
-    print("... and the position of the SCI star is:")
-    print(f"\t", ', '.join(f"{i:+0.3e}" for i in idl_coords['targ']), "arcsec")
+    print_output.append(f"\n")
+    print_output.append(f"After TA but before slewing, the position of the ACQ star should be close to (0, 0):")
+    print_output.append(f"\t" + ', '.join(f"{i:+0.3e}" for i in idl_coords['ta']) + " arcsec")
+    print_output.append(f"... and the position of the SCI star is:")
+    print_output.append(f"\t" + ', '.join(f"{i:+0.3e}" for i in idl_coords['targ']) + " arcsec")
 
-    print("\n")
-    print("When the ACQ star is centered, the SCI star is at:")
-    print(f"\tdX: {idl_coords['targ'][0]:+2.6f} arcsec")
-    print(f"\tdY: {idl_coords['targ'][1]:+2.6f} arcsec")
+    print_output.append(f"\n")
+    print_output.append(f"When the ACQ star is centered, the SCI star is at:")
+    print_output.append(f"\tdX: {idl_coords['targ'][0]:+2.6f} arcsec")
+    print_output.append(f"\tdY: {idl_coords['targ'][1]:+2.6f} arcsec")
 
-    print("\n")
-    print("Sanity check: on-sky angular separation should be the same distance as that of the slew.")
+    print_output.append(f"\n")
+    print_output.append(f"Sanity check: on-sky angular separation should be the same distance as that of the slew.")
     # print in nice columns
     sep_as_str = f"{sep:0.6f}"
     slew_mag_str = f"{np.linalg.norm(offset) * units.arcsec :0.6f}"
     check_str = [['Separation', sep_as_str], ['Slew magnitude', slew_mag_str]]
     for row in check_str:
-        print("{: >20} {: >20}".format(*row))
+        print_output.append("{: >20} {: >20}".format(*row))
 
-    print("\n")
-    print("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
-    print(f"\tdX: {offset[0]:+2.6f} arcsec")
-    print(f"\tdY: {offset[1]:+2.6f} arcsec")
-    print("\n")
+    print_output.append("\n")
+    print_output.append("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
+    print_output.append(f"\tdX: {offset[0]:+2.6f} arcsec")
+    print_output.append(f"\tdY: {offset[1]:+2.6f} arcsec")
+    print_output.append("\n")
+
+    if verbose == True:
+        for line in print_output:
+            print(line)
 
     if show_plots == True:
         make_plots(
@@ -620,4 +629,7 @@ if __name__ == "__main__":
     ####### END USER INPUT ########
     ###############################
 
-    compute_offsets(slew_from, slew_to, v3, coron_id, show_plots, False)
+    compute_offsets(slew_from, slew_to, v3, coron_id,
+                    verbose=True,
+                    show_plots=show_plots,
+                    return_offsets=False)
