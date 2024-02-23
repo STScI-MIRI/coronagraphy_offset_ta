@@ -45,7 +45,8 @@ import compute_offsets
 # Users who are comfortable with astropy.coordiantes.SkyCoord may set them
 # as they like.
 
-# The "slew_to" variable stores the position of the final target of the observations
+# The "slew_to" variable stores the position of the final target of the observations.
+# The "slew_from" variable stores the position of the star that is used for TA.
 slew_to = {
     'label': 'B component',
     'position': SkyCoord( 
@@ -54,7 +55,7 @@ slew_to = {
         frame='icrs',
     )
 }
-# The "slew_from" variable stores the position of the star that is used for TA.
+
 slew_from = {
     'label': 'A component',
     'position': SkyCoord( 
@@ -63,6 +64,7 @@ slew_from = {
         frame='icrs',
     )
 }
+
 # Telescope V3PA
 # enter the PA angle of the *telescope* V3 axis, at the time of the observation
 v3 = 320.074
