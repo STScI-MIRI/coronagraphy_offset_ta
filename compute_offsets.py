@@ -149,12 +149,15 @@ def plot_before_offset_slew(aper_dict, idl_coords, star_positions={}):
     return fig
 
 
-def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions={}):
+def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions={}, axes=None):
     """Plot the TA sequence as seen by the detector"""
-    nrows = 1
-    ncols = 4
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(2*ncols, 4*nrows), sharex=True, sharey=True)
-    
+    if axes is None:
+        nrows = 1
+        ncols = 4
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(2*ncols, 4*nrows), sharex=True, sharey=True)
+    else:
+        fig = axes[0].get_figure()
+
     if star_positions != {}:
         targ_label= f"{star_positions['ACQ_label']} --> {star_positions['SCI_label']}\n"
     else:
@@ -234,7 +237,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
 
     for ax in axes:
         # plot customizations
-        ax.label_outer()
+        # ax.label_outer()
         ax.set_aspect('equal')
         ax.grid(True, ls='--', c='grey', alpha=0.5)
 
@@ -242,13 +245,15 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
     return fig
 
 
-def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
+def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes=None):
 
-    nrows = 4
-    ncols = 1
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols,
-                             #figsize=(6*ncols, 10*nrows),
-                             sharex=True, sharey=True)
+    if axes is None:
+        nrows = 1
+        ncols = 4
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols,
+                                 sharex=True, sharey=True)
+    else:
+        fig = axes[0].get_figure()
 
     targ_label= f"{star_positions['ACQ_label']} --> {star_positions['SCI_label']}"
     fig.suptitle(targ_label)
@@ -265,7 +270,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
 
     # We start TA in the outer TA region
     ax = axes[0]
-    ax.set_title(f"Step 1: UR TA region")
+    ax.set_title(f"Step 1\nUR TA region")
 
     # center the attitude matrix at the Outer TA ROI
     attmat = create_attmat(star_positions['ACQ'], aper_dict['UR'], star_positions['v3'])
@@ -275,7 +280,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
 
     # Continue to step 2 of TA, in the inner TA region
     ax = axes[1]
-    ax.set_title(f"Step 2: CUR TA region")
+    ax.set_title(f"Step 2\nCUR TA region")
 
     # center the attitude matrix at the Inner TA ROI
     attmat = create_attmat(star_positions['ACQ'], aper_dict['CUR'], star_positions['v3'])
@@ -286,7 +291,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
 
     # plot the final TA before the offset is applied
     ax = axes[2]
-    ax.set_title("Step 3: Centered")
+    ax.set_title("Step 3\nCentered")
 
     # center the attitude matrix on the coronagraph reference position
     attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['v3'])
@@ -304,7 +309,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     tel_sky = SkyCoord(ra=ra, dec=dec, unit='deg', frame='icrs')
     # compute the new attitude matrix at the slew position
     attmat = create_attmat(tel_sky, aper_dict['coro'], star_positions['v3'])
-    ax.set_title(f"Step 4: Offset applied\nTel-Targ sep: {tel_sky.separation(star_positions['SCI']).to('mas'):0.2e}")
+    ax.set_title(f"Step 4\nOffset applied")#\nTel-Targ sep: {tel_sky.separation(star_positions['SCI']).to('mas'):0.2e}")
     formatting = dict(c=colors[3], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -314,7 +319,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
         # plot customizations
         ax.set_ylabel("Dec [deg]")
         ax.set_xlabel("RA [deg]")
-        ax.label_outer()
+        # ax.label_outer()
         ax.set_aspect("equal") 
         ax.grid(True, ls='--', c='grey', alpha=0.5)    
         # fix x-axis labels
@@ -323,6 +328,39 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors):
     fig.tight_layout()
     return fig
 
+
+def plot_observing_sequence(
+        aper_dict : dict,
+        ta_sequence : dict,
+        idl_coords : dict,
+        star_positions : dict,
+        offset : np.ndarray,
+) -> mpl.figure.Figure :
+    """
+    Plot the observing sequence both from the detector POV and the sky POV.
+
+    Parameters
+    ----------
+    define your parameters
+
+    Output
+    ------
+    Define your output
+
+    """
+    nrows = 2 # top row: detector, bottom row: sky
+    ncols = 4 # outer, inner, centered, slew
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols,
+                             layout='constrained',
+                             sharex='row', sharey='row')
+
+    # plot the sequence from the POV of the detector
+    fig = plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions, axes[0])
+    # plot the sequence from the POV of the sky
+    colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
+    fig = plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes[1])
+
+    return fig
 
 def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
     """Plot the TA sequence on the sky, all on one axis"""
@@ -434,14 +472,19 @@ def make_plots(
                                           aper, 
                                           star_positions['v3'])
     ta_sequence['slew'] = {k: np.array(v) + offset for k, v in ta_sequence['coro'].items()}
-    fig2 = plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions)
+    # fig2 = plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions)
 
+
+    # Plot 5: plot detector and sky POV on same figure
+    fig5 = plot_observing_sequence(aper_dict, ta_sequence, idl_coords,
+                                   star_positions, offset)
 
     # Plot 3: The TA sequence in RA and Dec, split into separate plots
-    fig3 = plot_sky_ta_sequence(aper_dict, star_positions, offset, colors)
+    # fig3 = plot_sky_ta_sequence(aper_dict, star_positions, offset, colors)
 
     # Plot 4: The TA sequence in RA and Dec on a single plot
     fig4 = plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors)
+
 
     # now, actually show the plots
     plt.show()
