@@ -69,13 +69,9 @@ slew_from = {
 # enter the PA angle of the *telescope* V3 axis, at the time of the observation
 v3pa = 320.074
 
-# Choose a coronagraph by uncommenting one of these choices
-coron_id = [
-    # '1065',
-    # '1140',
-    '1550',
-    # 'LYOT',
-]
+# Choose a coronagraph by assigning one of the following to `coron_id`:
+# 1065, 1140, 1550, LYOT
+coron_id = '1150'
 
 # Plotting - set to False if you don't want to show plots, or True if you do
 show_plots = False

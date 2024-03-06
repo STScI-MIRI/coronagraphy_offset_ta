@@ -121,7 +121,7 @@ def compute_offsets(
         slew_from: dict,
         slew_to: dict,
         v3pa: float,
-        coron_ids : list[str],
+        coron_id : str,
         verbose : bool = True,
         show_plots : bool = True,
         return_offsets : bool = False
@@ -153,8 +153,14 @@ def compute_offsets(
     Prints offsets and shows plots. Returns a dict of floats
 
     """
-
-    coron_id = coron_ids[0]
+    coron_ids = ['1065','1140','1550', 'LYOT']
+    # make sure coron_id is valid
+    try:
+        assert(coron_id in coron_ids)
+    except AssertionError:
+        print(f"Error: bad value for `coron_id` ({coron_id})")
+        print(f"Must be one of [{', '.join(coron_ids)}].")
+        return np.array([np.nan, np.nan])
     star_positions = {
         # the TA star
         'ACQ': slew_from['position'],
@@ -674,13 +680,9 @@ if __name__ == "__main__":
     # enter the PA angle of the *telescope* V3 axis, at the time of the observation
     v3pa = 320.074
 
-    # Choose a coronagraph by uncommenting one of these choices
-    coron_id = [
-        # '1065',
-        # '1140',
-        '1550',
-        # 'LYOT',
-    ]
+    # Choose a coronagraph by assigning one of the following to `coron_id`:
+    # 1065, 1140, 1550, LYOT
+    coron_id = '1550'
 
     # Plotting - set to False if you don't want to show plots
     show_plots = True
