@@ -43,7 +43,7 @@ acquisition (ACQ) targets, respectively.
 
 
 #### `v3pa` ####
----------------------------
+----------------
 `v3pa` refers to the position angle of the telescope's V3 axis *at the reference
 position of the aperture used for the observation*. If that sounds confusing,
 the short version is it corresponds to the angle in APT's "Special Requirements
@@ -72,6 +72,7 @@ https://jwst-docs.stsci.edu/jwst-observatory-characteristics/jwst-observatory-co
 .
 
 #### `coron_id` ####
+--------------------
 `coron_id` is a string that tells the script which of the four MIRI coronagraphs
 will be used for the observation. Options are:
 - '1065' -> '4QPM_1065'/'MIRIM_MASK1065'
@@ -80,10 +81,12 @@ will be used for the observation. Options are:
 - 'LYOT' -> '4QPM_LYOT'/'MIRIM_MASKLYOT'
 
 #### `show_plots` ####
+----------------------
 This is a switch to turn on (True) or off (False) the display of handy plots
 that show the TA process from the points of view of the sky and detector.
 
 #### Other parameters ####
+--------------------------
 The function `compute_offsets` takes two more arguments that are more useful if
 it is being imported into another script:
 - `verbose`: a switch to print (True) or suppress (False) diagnostic text to the
