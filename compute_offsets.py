@@ -8,7 +8,7 @@ USAGE
 This tool is meant to help users compute offsets in the case that they need to
 perform TA on a target other than their science target. The data required are
 the sky coordinates of the acquisition and science targets, and precise
-telescope PA_V3 angles, at the epoch of observation.
+telescope ROLL_REF angles, at the epoch of observation.
 
 There are two ways to use this tool: running it as a script, or importing it as
 a module. To run it as a script, users should edit the relevant values at the
@@ -120,7 +120,7 @@ def sky_to_idl(ta_pos, targ_pos, aper, pa):
 def compute_offsets(
         slew_from: dict,
         slew_to: dict,
-        pa_v3: float,
+        v3pa: float,
         coron_ids : list[str],
         verbose : bool = True,
         show_plots : bool = True,
@@ -137,7 +137,7 @@ def compute_offsets(
     slew_to: dict
       A dictionary containing the label and position of the science target, set by
       the user in compute_offsets.py
-    pa_v3: float
+    v3pa: float
       The PA_V3 angle of the telescope for this observation
     coron_ids : list[str]
       A list read in from compute_offsets.py with only one of the coronagraph choices uncommentet
@@ -160,7 +160,7 @@ def compute_offsets(
         'ACQ': slew_from['position'],
         # The star you will eventually slew to
         'SCI': slew_to['position'],
-        'pa_v3': pa_v3,
+        'v3pa': v3pa,
         # for plotting
         'ACQ_label' : slew_from['label'],
         'SCI_label' : slew_to['label'],
@@ -191,7 +191,7 @@ def compute_offsets(
     idl_coords = sky_to_idl(star_positions['ACQ'], 
                             star_positions['SCI'],
                             all_apers['coro'],
-                            star_positions['pa_v3'])
+                            star_positions['v3pa'])
     # The offset you apply is as if you were moving the science target - i.e.
     # the negative of its position
     offset = -1*np.array(idl_coords['targ'])
@@ -416,7 +416,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes=None):
     ax.set_title(f"Step 1\nUR TA region")
 
     # center the attitude matrix at the Outer TA ROI
-    attmat = create_attmat(star_positions['ACQ'], aper_dict['UR'], star_positions['pa_v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['UR'], star_positions['v3pa'])
     formatting = dict(c=colors[0], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -426,7 +426,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes=None):
     ax.set_title(f"Step 2\nCUR TA region")
 
     # center the attitude matrix at the Inner TA ROI
-    attmat = create_attmat(star_positions['ACQ'], aper_dict['CUR'], star_positions['pa_v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['CUR'], star_positions['v3pa'])
     formatting = dict(c=colors[1], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -437,7 +437,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes=None):
     ax.set_title("Step 3\nCentered")
 
     # center the attitude matrix on the coronagraph reference position
-    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['pa_v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['v3pa'])
     formatting = dict(c=colors[2], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
 
@@ -446,12 +446,12 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes=None):
     # Plot the apertures and sources after the offset slew
     ax = axes[3]
     # compute the ra, dec of the offset from the TA position
-    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['pa_v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['v3pa'])
     aper_dict['coro'].set_attitude_matrix(attmat)
     ra, dec = aper_dict['coro'].idl_to_sky(*(-offset))
     tel_sky = SkyCoord(ra=ra, dec=dec, unit='deg', frame='icrs')
     # compute the new attitude matrix at the slew position
-    attmat = create_attmat(tel_sky, aper_dict['coro'], star_positions['pa_v3'])
+    attmat = create_attmat(tel_sky, aper_dict['coro'], star_positions['v3pa'])
     ax.set_title(f"Step 4\nOffset applied")#\nTel-Targ sep: {tel_sky.separation(star_positions['SCI']).to('mas'):0.2e}")
     formatting = dict(c=colors[3], alpha=1, ls='-')
     plot_apers(ax, attmat, aper_dict, formatting)
@@ -524,7 +524,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
                c='k', label='SCI', marker='*', s=100)    
 
     # We start TA in the outer TA region
-    attmat = create_attmat(star_positions['ACQ'], aper_dict['UR'], star_positions['pa_v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['UR'], star_positions['v3pa'])
     formatting = dict(c=colors[0], alpha=1, ls='dotted')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [], 
@@ -533,7 +533,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
 
 
     # Continue to step 2 of TA, in the inner TA region
-    attmat = create_attmat(star_positions['ACQ'], aper_dict['CUR'], star_positions['pa_v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['CUR'], star_positions['v3pa'])
     formatting = dict(c=colors[1], alpha=1, ls='dashdot')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [], 
@@ -543,7 +543,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
 
     # plot the final TA before the offset is applied
     # the telescope is now pointing the center of the coronagraph at the TA star
-    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['pa_v3'])
+    attmat = create_attmat(star_positions['ACQ'], aper_dict['coro'], star_positions['v3pa'])
     formatting = dict(c=colors[2], alpha=1, ls='dashed')
     plot_apers(ax, attmat, aper_dict, formatting)
     ax.plot([], [],
@@ -555,7 +555,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
     # note that you must CHANGE THE SIGN OF THE OFFSET to get the position of the reference point
     ra, dec = aper_dict['coro'].idl_to_sky(*(-offset))
     tel_sky = SkyCoord(ra=ra, dec=dec, unit='deg', frame='icrs')
-    attmat = create_attmat(tel_sky, aper_dict['coro'], star_positions['pa_v3'])
+    attmat = create_attmat(tel_sky, aper_dict['coro'], star_positions['v3pa'])
 
     formatting = dict(c=colors[3], alpha=1, ls='solid')
     plot_apers(ax, attmat, aper_dict, formatting)
@@ -615,7 +615,7 @@ def make_plots(
         ta_sequence[aper_id] = sky_to_idl(star_positions['ACQ'], 
                                           star_positions['SCI'], 
                                           aper, 
-                                          star_positions['pa_v3'])
+                                          star_positions['v3pa'])
     ta_sequence['slew'] = {k: np.array(v) + offset for k, v in ta_sequence['coro'].items()}
 
     # Plot 2: The TA sequence in RA and Dec on a single plot
@@ -672,7 +672,7 @@ if __name__ == "__main__":
 
     # Telescope V3PA
     # enter the PA angle of the *telescope* V3 axis, at the time of the observation
-    pa_v3 = 320.074
+    v3pa = 320.074
 
     # Choose a coronagraph by uncommenting one of these choices
     coron_id = [
@@ -689,7 +689,7 @@ if __name__ == "__main__":
     ####### END USER INPUT ########
     ###############################
 
-    compute_offsets(slew_from, slew_to, pa_v3, coron_id,
+    compute_offsets(slew_from, slew_to, v3pa, coron_id,
                     verbose=True,
                     show_plots=show_plots,
                     return_offsets=False)

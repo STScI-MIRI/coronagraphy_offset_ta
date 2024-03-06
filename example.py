@@ -67,7 +67,7 @@ slew_from = {
 
 # Telescope V3PA
 # enter the PA angle of the *telescope* V3 axis, at the time of the observation
-v3 = 320.074
+v3pa = 320.074
 
 # Choose a coronagraph by uncommenting one of these choices
 coron_id = [
@@ -87,7 +87,7 @@ show_plots = False
 ###############################
 
 if __name__ == "__main__":
-    dx, dy = compute_offsets.compute_offsets(slew_from, slew_to, v3, coron_id,
+    dx, dy = compute_offsets.compute_offsets(slew_from, slew_to, v3pa, coron_id,
                                              verbose=False,
                                              show_plots=show_plots,
                                              return_offsets=True)
