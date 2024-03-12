@@ -356,7 +356,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
     other_pos = [ta_aper.idl_to_det(*i['position']) for i in ta_sequence[ta_aper_id][2:]]
 
     ax.scatter(*acq_pos, 
-               c='k', label='TA star', marker='x', s=100)
+               c='k', label='ACQ', marker='x', s=100)
     ax.scatter(*sci_pos,
                c='k', label='SCI', marker='*', s=100)
     for pos in other_pos:
@@ -365,46 +365,45 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
     # put the legend on this plot
     ax.legend(loc='best', ncol=1, fontsize='small', markerscale=0.7)
 
-#     # Inner TA
-#     ax = axes[1]
-#     ta_aper_id = 'CUR'
-#     ax.set_title("Step 2\n" + f"{ta_aper_id} TA region")
-#     # use the TA aperture object to convert coordinates
-#     ta_aper = aper_dict[ta_aper_id]
-#     ta_aper.plot(ax=ax, label=False, frame='det', mark_ref=True, fill=False, c='C2')
+    # Inner TA
+    ax = axes[1]
+    ta_aper_id = 'CUR'
+    ax.set_title("Step 2\n" + f"{ta_aper_id} TA region")
+    # use the TA aperture object to convert coordinates
+    ta_aper = aper_dict[ta_aper_id]
+    ta_aper.plot(ax=ax, label=False, frame='det', mark_ref=True, fill=False, c='C2')
 
-#     acq_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id]['ta'])
-#     sci_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id]['targ'])
-
-#     ax.scatter(*acq_pos,
-#                c='k', label='TA star', marker='x', s=100)
-#     ax.scatter(*sci_pos,
-#                c='k', label='SCI', marker='*', s=100)
+    acq_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id][0]['position'])
+    sci_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id][1]['position'])
+    ax.scatter(*acq_pos,
+               c='k', label='ACQ', marker='x', s=100)
+    ax.scatter(*sci_pos,
+               c='k', label='SCI', marker='*', s=100)
 
 #     # TA star centered
-#     ax = axes[2]
-#     ax.set_title("Step 3\n" + "TA star centered")
-#     # plot the final TA before the offset is applied
-#     aper = aper_dict['coro']
-#     ax.scatter(*aper.idl_to_det(*idl_coords['ta']),
-#                c='k', label='TA star', marker='x', s=100)
-#     ax.scatter(*aper.idl_to_det(*idl_coords['targ']),
-#                c='k', label='SCI', marker='*', s=100)
+    ax = axes[2]
+    ax.set_title("Step 3\n" + "TA star centered")
+    # plot the final TA before the offset is applied
+    aper = aper_dict['coro']
+    ax.scatter(*aper.idl_to_det(*idl_coords[0]['position']),
+               c='k', label='ACQ', marker='x', s=100)
+    ax.scatter(*aper.idl_to_det(*idl_coords[1]['position']),
+               c='k', label='SCI', marker='*', s=100)
 
-#     # Offset applied
-#     ax = axes[3]
-#     ax.set_title("Step 4\n" + "Offset applied")
-#     # apply the offset to the position
-# #     acq_pos  = aper_dict['coro'].idl_to_det(*np.array(ta_sequence['UR']['ta']) + offset)
-# #     sci_pos = aper_dict['coro'].idl_to_det(*np.array(ta_sequence['UR']['targ']) + offset)
-#     aper  = aper_dict['coro']
-#     acq_pos = aper.idl_to_det(*ta_sequence['slew']['ta'])
-#     sci_pos = aper.idl_to_det(*ta_sequence['slew']['targ'])
-#     ax.scatter(*acq_pos, 
-#                c='k', label='TA star', marker='x', s=100)
-#     ax.scatter(*sci_pos, 
-#                c='k', label='SCI', marker='*', s=100)
-
+    # Offset applied
+    ax = axes[3]
+    ax.set_title("Step 4\n" + "Offset applied")
+    # apply the offset to the position
+    aper  = aper_dict['coro']
+    acq_pos = aper.idl_to_det(*ta_sequence['slew'][0]['position'])
+    sci_pos = aper.idl_to_det(*ta_sequence['slew'][1]['position'])
+    ax.scatter(*acq_pos, 
+               c='k', label='ACQ', marker='x', s=100)
+    ax.scatter(*sci_pos, 
+               c='k', label='SCI', marker='*', s=100)
+    for pos in ta_sequence['slew'][2:]:
+        ax.scatter(*pos['position'], 
+                   c='k', marker='.', s=50)
 
     for ax in axes:
         # plot customizations
@@ -656,7 +655,7 @@ def make_plots(
         ta_sequence[aper_id] = sky_to_idl(star_positions, 
                                           aper, 
                                           v3pa)
-    ta_sequence['slew'] = {i['label']: np.array(i['position']) + offset for i in ta_sequence['coro']}
+    ta_sequence['slew'] = [{'label': i['label'], 'position': np.array(i['position']) + offset} for i in ta_sequence['coro']]
 
     # Plot 2: The TA sequence in RA and Dec on a single plot
     colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
@@ -668,9 +667,9 @@ def make_plots(
                                    star_positions, offset)
     figures.append(fig3)
 
-    # # now, actually show the plots
-    # for fig in figures[::-1]:
-    #     fig.show()
+    # # now, show the plots in correct order
+    for fig in figures[::-1]:
+        fig.show()
     plt.show()
 
 
