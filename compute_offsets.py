@@ -127,6 +127,7 @@ def compute_offsets(
         other_stars : list = [],
         verbose : bool = True,
         show_plots : bool = True,
+        plot_full : bool = False,
         return_offsets : bool = False
 ) -> np.ndarray :
     """
@@ -201,6 +202,8 @@ def compute_offsets(
     all_apers['CUR'] = miri[f'MIRIM_TA{coron_id}_CUR']
     all_apers['coro'] = miri[f'MIRIM_CORON{coron_id}']
     all_apers['mask'] = miri[f'MIRIM_MASK{coron_id}']
+    if plot_full == True:
+        all_apers['full'] = miri['MIRIM_FULL']
 
 
     idl_coords = sky_to_idl(star_positions,
@@ -719,6 +722,7 @@ if __name__ == "__main__":
 
     # Print output
     verbose=True
+
     # Plotting - set to False if you don't want to show plots
     show_plots = True
 
@@ -729,4 +733,5 @@ if __name__ == "__main__":
     compute_offsets(slew_from, slew_to, v3pa, coron_id,
                     verbose=verbose,
                     show_plots=show_plots,
+                    plot_full = True,
                     return_offsets=False)
