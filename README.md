@@ -25,6 +25,17 @@ diagnostic information. Alternatively, the file `example.py` shows how to use
 It is suggested that users make a new copy of `compute_offsets.py` or
 `example.py` for each variation of TA star and science target.
 
+It can also be imported as a module after downloading the source code from github:
+```
+cd $directory
+pip install -e .
+```
+
+Then from a python terminal:
+```
+> from miri_coro_offset_ta import compute_offsets
+```
+
 ### User-specified variables ###
 
 #### `slew_to`, `slew_from` ####
