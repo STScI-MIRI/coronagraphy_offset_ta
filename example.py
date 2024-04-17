@@ -31,7 +31,7 @@ Requirements:
 """
 from astropy.coordinates import SkyCoord
 
-import compute_offsets
+from miri_coro_offset_ta import compute_offsets
 
 
 ###############################
@@ -71,10 +71,11 @@ v3pa = 320.074
 
 # Choose a coronagraph by assigning one of the following to `coron_id`:
 # 1065, 1140, 1550, LYOT
-coron_id = '1150'
+coron_id = '1550'
 
 # Plotting - set to False if you don't want to show plots, or True if you do
-show_plots = False
+# If False, other plotting commands are ignored.
+show_plots = True
 
 ###############################
 ######## END USER INPUT #######
@@ -84,9 +85,11 @@ show_plots = False
 
 if __name__ == "__main__":
     dx, dy = compute_offsets.compute_offsets(slew_from, slew_to, v3pa, coron_id,
-                                             verbose=False,
-                                             show_plots=show_plots,
-                                             return_offsets=True)
+                                             verbose = False,
+                                             show_plots = show_plots,
+                                             plot_full = True,
+                                             return_offsets=True,
+                                             )
     print("Offsets: ")
     print(f"\tdx: {dx:+0.5f}")
     print(f"\tdy: {dy:+0.5f}")
