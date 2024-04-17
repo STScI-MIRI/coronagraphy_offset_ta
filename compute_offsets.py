@@ -39,6 +39,7 @@ import numpy as np
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 import matplotlib.ticker as ticker
+from matplotlib.patches import Polygon
 
 from astropy.coordinates import SkyCoord
 from astropy import units
@@ -127,6 +128,7 @@ def compute_offsets(
         other_stars : list = [],
         verbose : bool = True,
         show_plots : bool = True,
+        plot_full : bool = False,
         return_offsets : bool = False
 ) -> np.ndarray :
     """
@@ -201,6 +203,8 @@ def compute_offsets(
     all_apers['CUR'] = miri[f'MIRIM_TA{coron_id}_CUR']
     all_apers['coro'] = miri[f'MIRIM_CORON{coron_id}']
     all_apers['mask'] = miri[f'MIRIM_MASK{coron_id}']
+    if plot_full == True:
+        all_apers['full'] = miri['MIRIM_FULL']
 
 
     idl_coords = sky_to_idl(star_positions,
@@ -310,7 +314,7 @@ def plot_before_offset_slew(
                label=f"SCI/{idl_coords[1]['label']}",
                marker="*",
                c='k')
-
+    ax.add_artist(quad_boundaries(aper_dict['coro'], kwargs={'fc': 'grey'}))
     ax.legend()
     ax.set_aspect("equal")
     ax.grid(True, ls='--', c='grey', alpha=0.5)
@@ -356,7 +360,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
     other_pos = [ta_aper.idl_to_det(*i['position']) for i in ta_sequence[ta_aper_id][2:]]
 
     ax.scatter(*acq_pos, 
-               c='k', label='TA star', marker='x', s=100)
+               c='k', label='ACQ', marker='x', s=100)
     ax.scatter(*sci_pos,
                c='k', label='SCI', marker='*', s=100)
     for pos in other_pos:
@@ -373,38 +377,37 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
 #     ta_aper = aper_dict[ta_aper_id]
 #     ta_aper.plot(ax=ax, label=False, frame='det', mark_ref=True, fill=False, c='C2')
 
-#     acq_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id]['ta'])
-#     sci_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id]['targ'])
-
-#     ax.scatter(*acq_pos,
-#                c='k', label='TA star', marker='x', s=100)
-#     ax.scatter(*sci_pos,
-#                c='k', label='SCI', marker='*', s=100)
+    acq_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id][0]['position'])
+    sci_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id][1]['position'])
+    ax.scatter(*acq_pos,
+               c='k', label='ACQ', marker='x', s=100)
+    ax.scatter(*sci_pos,
+               c='k', label='SCI', marker='*', s=100)
 
 #     # TA star centered
-#     ax = axes[2]
-#     ax.set_title("Step 3\n" + "TA star centered")
-#     # plot the final TA before the offset is applied
-#     aper = aper_dict['coro']
-#     ax.scatter(*aper.idl_to_det(*idl_coords['ta']),
-#                c='k', label='TA star', marker='x', s=100)
-#     ax.scatter(*aper.idl_to_det(*idl_coords['targ']),
-#                c='k', label='SCI', marker='*', s=100)
+    ax = axes[2]
+    ax.set_title("Step 3\n" + "TA star centered")
+    # plot the final TA before the offset is applied
+    aper = aper_dict['coro']
+    ax.scatter(*aper.idl_to_det(*idl_coords[0]['position']),
+               c='k', label='ACQ', marker='x', s=100)
+    ax.scatter(*aper.idl_to_det(*idl_coords[1]['position']),
+               c='k', label='SCI', marker='*', s=100)
 
-#     # Offset applied
-#     ax = axes[3]
-#     ax.set_title("Step 4\n" + "Offset applied")
-#     # apply the offset to the position
-# #     acq_pos  = aper_dict['coro'].idl_to_det(*np.array(ta_sequence['UR']['ta']) + offset)
-# #     sci_pos = aper_dict['coro'].idl_to_det(*np.array(ta_sequence['UR']['targ']) + offset)
-#     aper  = aper_dict['coro']
-#     acq_pos = aper.idl_to_det(*ta_sequence['slew']['ta'])
-#     sci_pos = aper.idl_to_det(*ta_sequence['slew']['targ'])
-#     ax.scatter(*acq_pos, 
-#                c='k', label='TA star', marker='x', s=100)
-#     ax.scatter(*sci_pos, 
-#                c='k', label='SCI', marker='*', s=100)
-
+    # Offset applied
+    ax = axes[3]
+    ax.set_title("Step 4\n" + "Offset applied")
+    # apply the offset to the position
+    aper  = aper_dict['coro']
+    acq_pos = aper.idl_to_det(*ta_sequence['slew'][0]['position'])
+    sci_pos = aper.idl_to_det(*ta_sequence['slew'][1]['position'])
+    ax.scatter(*acq_pos, 
+               c='k', label='ACQ', marker='x', s=100)
+    ax.scatter(*sci_pos, 
+               c='k', label='SCI', marker='*', s=100)
+    for pos in ta_sequence['slew'][2:]:
+        ax.scatter(*pos['position'], 
+                   c='k', marker='.', s=50)
 
     for ax in axes:
         # plot customizations
@@ -656,7 +659,7 @@ def make_plots(
         ta_sequence[aper_id] = sky_to_idl(star_positions, 
                                           aper, 
                                           v3pa)
-    ta_sequence['slew'] = {i['label']: np.array(i['position']) + offset for i in ta_sequence['coro']}
+    ta_sequence['slew'] = [{'label': i['label'], 'position': np.array(i['position']) + offset} for i in ta_sequence['coro']]
 
     # Plot 2: The TA sequence in RA and Dec on a single plot
     colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
@@ -668,13 +671,68 @@ def make_plots(
                                    star_positions, offset)
     figures.append(fig3)
 
-    # # now, actually show the plots
-    # for fig in figures[::-1]:
-    #     fig.show()
+    # # now, show the plots in correct order
+    for fig in figures[::-1]:
+        fig.show()
     plt.show()
 
 
 
+def quad_boundaries(aperture, kwargs={}):
+    """
+    Generate a polygon to plot the 4QPM quadrant boundaries. Stolen from the JWST
+    coronagraphic visibility tool
+
+    Parameters
+    ----------
+    aperture: a pysiaf.Siaf aperture for the 1065, 1140, or 1550 coronagraph
+    kwargs : {} arguments to pass to Polygon
+
+    Output
+    ------
+    mask : matplotlib.patches.Polygon object
+    """
+
+    y_angle = np.deg2rad(aperture.V3IdlYAngle)
+    corners_x, corners_y = aperture.corners(to_frame='idl')
+    min_x, min_y = np.min(corners_x), np.min(corners_y)
+    max_x, max_y = np.max(corners_x), np.max(corners_y)
+
+    width_arcsec = 0.33
+    x_verts0 = np.array([
+        min_x,
+        -width_arcsec,
+        -width_arcsec,
+        width_arcsec,
+        width_arcsec,
+        max_x,
+        max_x,
+        width_arcsec,
+        width_arcsec,
+        -width_arcsec,
+        -width_arcsec,
+        min_x
+    ])
+    y_verts0 = np.array([
+        width_arcsec,
+        width_arcsec,
+        max_y,
+        max_y,
+        width_arcsec,
+        width_arcsec,
+        -width_arcsec,
+        -width_arcsec,
+        min_y,
+        min_y,
+        -width_arcsec,
+        -width_arcsec
+    ])
+    x_verts = np.cos(y_angle) * x_verts0 + np.sin(y_angle) * y_verts0
+    y_verts = -np.sin(y_angle) * x_verts0 + np.cos(y_angle) * y_verts0
+
+    verts = np.concatenate([x_verts[:, np.newaxis], y_verts[:, np.newaxis]], axis=1)
+    mask = Polygon(verts, alpha=0.5, **kwargs)
+    return mask
 
 
 if __name__ == "__main__":
@@ -720,6 +778,7 @@ if __name__ == "__main__":
 
     # Print output
     verbose=True
+
     # Plotting - set to False if you don't want to show plots
     show_plots = True
 
@@ -730,4 +789,5 @@ if __name__ == "__main__":
     compute_offsets(slew_from, slew_to, v3pa, coron_id,
                     verbose=verbose,
                     show_plots=show_plots,
+                    plot_full = True,
                     return_offsets=False)
