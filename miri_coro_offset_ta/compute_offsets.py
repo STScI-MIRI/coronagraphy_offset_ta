@@ -48,6 +48,7 @@ import pysiaf
 from pysiaf import Siaf
 
 
+miri = Siaf("MIRI")
 #------------------------------------------------------#
 #----------------- Offset Computation -----------------#
 #------------------------------------------------------#
@@ -130,7 +131,7 @@ def compute_offsets(
         show_plots : bool = True,
         plot_full : bool = False,
         return_offsets : bool = False
-) -> np.ndarray :
+) -> np.ndarray | None :
     """
     Compute the slews for the TA sequences, print the offsets, and show the plots if requested
 
@@ -144,14 +145,18 @@ def compute_offsets(
       the user in compute_offsets.py
     v3pa: float
       The PA_V3 angle of the telescope for this observation
-    coron_ids : list[str]
-      A list read in from compute_offsets.py with only one of the coronagraph choices uncommentet
+    coron_id : str
+      Identifier for the desired coronagraphic subarray. Must be one of '1065', '1140', '1550', and 'LYOT'
     other_stars : list
       A list of dicts of other stars in the field, in the same format as slew_from/slew_to
+    verbose : bool = True
+      print diagnostics and offsets to screen. Set to False if you're returning
+      the values to variables in a script.
     show_plots : bool = True
       If True, display the diagnostic plots. If False, only print the offsets.
-    verbose : bool = True
-      print diagnostics and offsets to screen. Set to False if you're returning the values to variables in a script. 
+    plot_full : bool = True
+      If True, plot the MIRI Imager footprint in addition to the coronagraphic
+      subarray. This is useful for FULL array readout mode.
     return_offsets : bool = False
       If True, return an array of dx and dy offsets
 
@@ -163,11 +168,12 @@ def compute_offsets(
     coron_ids = ['1065','1140','1550', 'LYOT']
     # make sure coron_id is valid
     try:
-        assert(coron_id in coron_ids)
+        assert(coron_id.upper() in coron_ids)
     except AssertionError:
         print(f"Error: bad value for `coron_id` ({coron_id})")
         print(f"Must be one of [{', '.join(coron_ids)}].")
         return np.array([np.nan, np.nan])
+    coron_id = coron_id.upper()
     # star_positions = {
     #     # the TA star
     #     'ACQ': slew_from['position'],
@@ -191,9 +197,7 @@ def compute_offsets(
     print_output.append(f"Separation and PA: {sep.mas:0.2f} mas, {pa.degree:0.2f} deg\n")
 
 
-    # Siaf
-    miri = Siaf("MIRI")
-    # now that we have the MIRI object, let's get the 1550 coronagraph apertures used in 1618.
+
     # There are two relevant apertures: MIRIM_MASK[XXXX], which is the entire subarray, and
     # MIRIM_CORON[XXXX], which is just the portion that gets illuminated
     # let's combine all the SIAF objects in a dict for convenience
@@ -204,7 +208,9 @@ def compute_offsets(
     all_apers['coro'] = miri[f'MIRIM_CORON{coron_id}']
     all_apers['mask'] = miri[f'MIRIM_MASK{coron_id}']
     if plot_full == True:
-        all_apers['full'] = miri['MIRIM_FULL']
+        # plot the MIRIM detector and the imager illuminated footprint
+        # all_apers['full'] = miri['MIRIM_FULL']
+        all_apers['imager'] = miri['MIRIM_ILLUM']
 
 
     idl_coords = sky_to_idl(star_positions,
@@ -369,13 +375,13 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
     # put the legend on this plot
     ax.legend(loc='best', ncol=1, fontsize='small', markerscale=0.7)
 
-#     # Inner TA
-#     ax = axes[1]
-#     ta_aper_id = 'CUR'
-#     ax.set_title("Step 2\n" + f"{ta_aper_id} TA region")
-#     # use the TA aperture object to convert coordinates
-#     ta_aper = aper_dict[ta_aper_id]
-#     ta_aper.plot(ax=ax, label=False, frame='det', mark_ref=True, fill=False, c='C2')
+    # Inner TA
+    ax = axes[1]
+    ta_aper_id = 'CUR'
+    ax.set_title("Step 2\n" + f"{ta_aper_id} TA region")
+    # use the TA aperture object to convert coordinates
+    ta_aper = aper_dict[ta_aper_id]
+    ta_aper.plot(ax=ax, label=False, frame='det', mark_ref=True, fill=False, c='C2')
 
     acq_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id][0]['position'])
     sci_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id][1]['position'])
@@ -418,7 +424,7 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
     return fig
 
 
-def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes=None):
+def plot_sky_ta_sequence(aper_dict, star_positions, v3pa, offset, colors, axes=None):
 
     if axes is None:
         nrows = 1
@@ -506,6 +512,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes=None):
 def plot_observing_sequence(
         aper_dict : dict,
         ta_sequence : dict,
+        v3pa : float,
         idl_coords : list,
         star_positions : list,
         offset : np.ndarray,
@@ -532,11 +539,11 @@ def plot_observing_sequence(
     fig = plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions, axes[0])
     # plot the sequence from the POV of the sky
     colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
-    fig = plot_sky_ta_sequence(aper_dict, star_positions, offset, colors, axes[1])
+    fig = plot_sky_ta_sequence(aper_dict, star_positions, v3pa, offset, colors, axes[1])
 
     return fig
 
-def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
+def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, v3pa, offset, colors):
     """Plot the TA sequence on the sky, all on one axis"""
     nrows = 1
     ncols = 1
@@ -545,7 +552,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors):
     targ_label = f"{star_positions[0]['label']} --> {star_positions[1]['label']}"
     fig.suptitle(f"{targ_label}\nTA sequence, in RA/Dec")
 
-    colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
+    colors = mpl.cm.plasma_r(np.linspace(0.2, 0.9, 4))
 
     acq_pos = (star_positions[0]['position'].ra.deg, star_positions[0]['position'].dec.deg)
     sci_pos = (star_positions[1]['position'].ra.deg, star_positions[1]['position'].dec.deg)
@@ -663,11 +670,11 @@ def make_plots(
 
     # Plot 2: The TA sequence in RA and Dec on a single plot
     colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
-    fig2 = plot_sky_ta_sequence_one_axis(aper_dict, star_positions, offset, colors)
+    fig2 = plot_sky_ta_sequence_one_axis(aper_dict, star_positions, v3pa, offset, colors)
     figures.append(fig2)
 
     # Plot 3: plot detector and sky POV on same figure
-    fig3 = plot_observing_sequence(aper_dict, ta_sequence, idl_coords,
+    fig3 = plot_observing_sequence(aper_dict, ta_sequence, v3pa, idl_coords,
                                    star_positions, offset)
     figures.append(fig3)
 
