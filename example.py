@@ -1,7 +1,7 @@
 """
 Offset TA Tools
 Author: Jonathan Aguilar
-Latest update: January 25, 2024
+Latest update: April 17, 2024
 
 USAGE
 -----
