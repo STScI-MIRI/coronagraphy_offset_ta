@@ -48,10 +48,10 @@ import pysiaf
 from pysiaf import Siaf
 
 
-miri = Siaf("MIRI")
 #------------------------------------------------------#
 #----------------- Offset Computation -----------------#
 #------------------------------------------------------#
+miri = Siaf("MIRI")
 
 def create_attmat(
         position : SkyCoord,
@@ -119,6 +119,66 @@ def sky_to_idl(stars, aper, pa):
         pos = star['position']
         idl_coords.append({'label': label, 'position': np.array(aper.sky_to_idl(pos.ra.deg, pos.dec.deg))})
     return idl_coords
+
+def print_offset_information(
+        slew_from : dict,
+        slew_to: dict,
+        idl_coords : list,
+        sep : units.Quantity,
+        pa : units.Quantity,
+        offset : np.ndarray,
+) -> None:
+    """
+    Print the information about offsets to the user.
+
+    Parameters
+    ----------
+    define your parameters
+
+    Output
+    ------
+    None - prints to screen
+
+    """
+    print_output = []
+    print_output.append("Computing offset command values to slew from:")
+    print_output.append(f"\t{slew_from['label']}")
+    print_output.append(f"\t\t RA: \t {slew_from['position'].ra.degree}")
+    print_output.append(f"\t\t Dec: \t {slew_from['position'].dec.degree}")
+    print_output.append(f"to:")
+    print_output.append(f"\t{slew_to['label']}")
+    print_output.append(f"\t\t RA: \t {slew_to['position'].ra.degree}")
+    print_output.append(f"\t\t Dec: \t {slew_to['position'].dec.degree}")
+    print_output.append(f"\n")
+    print_output.append(f"Separation and PA: {sep.mas:0.2f} mas, {pa.degree:0.2f} deg\n")
+
+    print_output.append(f"\n")
+    print_output.append(f"After TA but before slewing, the position of the ACQ star should be close to (0, 0):")
+    print_output.append(f"\t" + ', '.join(f"{i:+0.3e}" for i in idl_coords[0]['position']) + " arcsec")
+    print_output.append(f"... and the position of the SCI star is:")
+    print_output.append(f"\t" + ', '.join(f"{i:+0.3e}" for i in idl_coords[1]['position']) + " arcsec")
+
+    print_output.append(f"\n")
+    print_output.append(f"When the ACQ star is centered, the SCI star is at:")
+    print_output.append(f"\tdX: {idl_coords[1]['position'][0]:+2.6f} arcsec")
+    print_output.append(f"\tdY: {idl_coords[1]['position'][1]:+2.6f} arcsec")
+
+    print_output.append(f"\n")
+    print_output.append(f"Sanity check: on-sky angular separation should be the same distance as that of the slew.")
+    # print in nice columns
+    sep_as_str = f"{sep:0.6f}"
+    slew_mag_str = f"{np.linalg.norm(offset) * units.arcsec :0.6f}"
+    check_str = [['Separation', sep_as_str], ['Slew magnitude', slew_mag_str]]
+    for row in check_str:
+        print_output.append("{: >20} {: >20}".format(*row))
+
+    print_output.append("\n")
+    print_output.append("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
+    print_output.append(f"\tdX: {offset[0]:+2.6f} arcsec")
+    print_output.append(f"\tdY: {offset[1]:+2.6f} arcsec")
+    print_output.append("\n")
+    for line in print_output:
+        print(line)
 
 
 def compute_offsets(
@@ -189,13 +249,9 @@ def compute_offsets(
               'SCI': slew_to['label']}
 
 
-    print_output = []
-
     # Offsets
     sep = star_positions[0]['position'].separation(star_positions[1]['position']).to(units.arcsec)
     pa = star_positions[0]['position'].position_angle(star_positions[1]['position']).to(units.deg)
-    print_output.append(f"Separation and PA: {sep.mas:0.2f} mas, {pa.degree:0.2f} deg\n")
-
 
 
     # There are two relevant apertures: MIRIM_MASK[XXXX], which is the entire subarray, and
@@ -220,44 +276,15 @@ def compute_offsets(
     # the negative of its position
     offset = -1*np.array(idl_coords[1]['position'])
 
-    print_output.append("Computing offset command values to slew from:")
-    print_output.append(f"\t{slew_from['label']}")
-    print_output.append(f"\t\t RA: \t {slew_from['position'].ra.degree}")
-    print_output.append(f"\t\t Dec: \t {slew_from['position'].dec.degree}")
-    print_output.append(f"to:")
-    print_output.append(f"\t{slew_to['label']}")
-    print_output.append(f"\t\t RA: \t {slew_to['position'].ra.degree}")
-    print_output.append(f"\t\t Dec: \t {slew_to['position'].dec.degree}")
-
-    print_output.append(f"\n")
-    print_output.append(f"After TA but before slewing, the position of the ACQ star should be close to (0, 0):")
-    print_output.append(f"\t" + ', '.join(f"{i:+0.3e}" for i in idl_coords[0]['position']) + " arcsec")
-    print_output.append(f"... and the position of the SCI star is:")
-    print_output.append(f"\t" + ', '.join(f"{i:+0.3e}" for i in idl_coords[1]['position']) + " arcsec")
-
-    print_output.append(f"\n")
-    print_output.append(f"When the ACQ star is centered, the SCI star is at:")
-    print_output.append(f"\tdX: {idl_coords[1]['position'][0]:+2.6f} arcsec")
-    print_output.append(f"\tdY: {idl_coords[1]['position'][1]:+2.6f} arcsec")
-
-    print_output.append(f"\n")
-    print_output.append(f"Sanity check: on-sky angular separation should be the same distance as that of the slew.")
-    # print in nice columns
-    sep_as_str = f"{sep:0.6f}"
-    slew_mag_str = f"{np.linalg.norm(offset) * units.arcsec :0.6f}"
-    check_str = [['Separation', sep_as_str], ['Slew magnitude', slew_mag_str]]
-    for row in check_str:
-        print_output.append("{: >20} {: >20}".format(*row))
-
-    print_output.append("\n")
-    print_output.append("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
-    print_output.append(f"\tdX: {offset[0]:+2.6f} arcsec")
-    print_output.append(f"\tdY: {offset[1]:+2.6f} arcsec")
-    print_output.append("\n")
-
     if verbose == True:
-        for line in print_output:
-            print(line)
+        print_offset_information(
+            slew_from=slew_from,
+            slew_to=slew_to,
+            idl_coords=idl_coords,
+            sep=sep,
+            pa=pa,
+            offset=offset
+        )
 
     if show_plots == True:
         make_plots(
@@ -276,7 +303,12 @@ def compute_offsets(
 #----------------- Plotting -----------------#
 #--------------------------------------------#
 
-def plot_apers(ax, attmat, aper_dict, format_dict={}):
+def plot_apers(
+        ax,
+        attmat,
+        aper_dict,
+        format_dict={}
+):
     """
     Helper function to plot the apertures for a given part of the TA sequence
     ax : axis to plot on
@@ -294,7 +326,6 @@ def plot_apers(ax, attmat, aper_dict, format_dict={}):
             pass
         else:
             aper.plot(ax=ax, label=False, frame='sky', fill=False, **format_thisaper)
-
 
 def plot_before_offset_slew(
         aper_dict : dict,
