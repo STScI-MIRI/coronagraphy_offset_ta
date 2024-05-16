@@ -57,7 +57,8 @@ def create_attmat(
         position : SkyCoord,
         aper : pysiaf.aperture.JwstAperture,
         pa : float,
-) -> np.ndarray :
+        idl_offset : tuple[float, float] = (0., 0.)
+) -> np.ndarray:
     """
     Create an attitude matrix for JWST when the reference point of a particular
     aperture is pointed at a given position for a specified PA
@@ -80,7 +81,8 @@ def create_attmat(
     attmat : np.ndarray
       matrix that pySIAF can use to specify the attitude of the telescope
     """
-    v2, v3 = aper.reference_point('tel')
+    v2, v3 = aper.idl_to_tel(idl_offset[0], idl_offset[1])
+    # v2, v3 = aper.reference_point('tel')
     # compute the attitude matrix when we're pointing directly at the TA target
     attmat = pysiaf.utils.rotations.attitude_matrix(v2, v3,
                                                     ra=position.ra.deg,
@@ -89,7 +91,12 @@ def create_attmat(
     return attmat
 
 
-def sky_to_idl(stars, aper, pa):
+def sky_to_idl(
+        stars : list[dict],
+        aper : pysiaf.aperture.JwstAperture,
+        pa : float,
+        idl_offset : tuple[float, float] = (0., 0.)
+) -> list[dict]:
     """
     Convert RA and Dec positions of a TA star and its target with an offset
     into a detector position (measured from the reference point, in arcsec)
@@ -110,7 +117,7 @@ def sky_to_idl(stars, aper, pa):
       the TA star coordinates should be very close to 0
     """
     acq_pos = stars[0]['position']
-    attmat = create_attmat(acq_pos, aper, pa)
+    attmat = create_attmat(acq_pos, aper, pa, idl_offset)
     aper.set_attitude_matrix(attmat)
     idl_coords = []
     # ta star - should be close to 0
@@ -206,7 +213,8 @@ def compute_offsets(
     v3pa: float
       The PA_V3 angle of the telescope for this observation
     coron_id : str
-      Identifier for the desired coronagraphic subarray. Must be one of '1065', '1140', '1550', and 'LYOT'
+      Identifier for the desired coronagraphic subarray. Must be one of '1065',
+      '1140', '1550', and 'LYOT'
     other_stars : list
       A list of dicts of other stars in the field, in the same format as slew_from/slew_to
     verbose : bool = True
@@ -234,16 +242,6 @@ def compute_offsets(
         print(f"Must be one of [{', '.join(coron_ids)}].")
         return np.array([np.nan, np.nan])
     coron_id = coron_id.upper()
-    # star_positions = {
-    #     # the TA star
-    #     'ACQ': slew_from['position'],
-    #     # The star you will eventually slew to
-    #     'SCI': slew_to['position'],
-    #     'v3pa': v3pa,
-    #     # for plotting
-    #     'ACQ_label' : slew_from['label'],
-    #     'SCI_label' : slew_to['label'],
-    # }
     star_positions = [slew_from, slew_to] + other_stars
     labels = {'ACQ': slew_from['label'],
               'SCI': slew_to['label']}
@@ -298,6 +296,57 @@ def compute_offsets(
     if return_offsets == True:
         return offset
 
+
+def work_backwards(
+        slew_from : dict,
+        slew_to : dict,
+        coron_id : str,
+        v3pa : float,
+        offset : tuple[float, float] = (0., 0.),
+        other_stars : list = [],
+) -> list[dict] :
+    """
+    Work backwards to find out where the slew_to star ended up, given sky
+    coordinates for the targets, the commanded offset, and the v3pa value of
+    the observation.
+
+    Parameters
+    ----------
+    slew_from : dict
+      label and coordinate of the ACQ target
+    slew_to : dict
+      label and coordinate of the SCI target
+    coron_id : str
+      Identifier for the desired coronagraphic subarray. Must be one of '1065',
+      '1140', '1550', and 'LYOT'
+    v3pa : float
+      the v3pa angle of the telescope at the aperture reference position, in
+      degrees
+    offset : np.ndarray[float]
+      the x and y offset commanded
+    other_stars : list
+      A list of dicts of other stars in the field that you might want to keep
+      track of, in the same format as slew_from/slew_to
+
+    Output
+    ------
+    idl_positions : list[dict]
+      A list of positions in subarray IDL coordinates provided targets. Each
+      list entry has format {'label': label, 'position': position}.
+
+    """
+    coron_id = coron_id.upper()
+    coro = miri[f'MIRIM_CORON{coron_id}']
+    mask = miri[f'MIRIM_MASK{coron_id}']
+
+    star_positions = [slew_from, slew_to] + other_stars
+
+    idl_coords = sky_to_idl(star_positions,
+                            coro,
+                            v3pa,
+                            idl_offset=offset)
+
+    return idl_coords
 
 #--------------------------------------------#
 #----------------- Plotting -----------------#
@@ -815,17 +864,20 @@ if __name__ == "__main__":
     coron_id = '1550'
 
     # Print output
-    verbose=True
+    verbose = True
 
     # Plotting - set to False if you don't want to show plots
-    show_plots = True
+    show_plots = False
 
     ###############################
     ####### END USER INPUT ########
     ###############################
 
-    compute_offsets(slew_from, slew_to, v3pa, coron_id,
-                    verbose=verbose,
-                    show_plots=show_plots,
-                    plot_full = True,
-                    return_offsets=False)
+    offsets = compute_offsets(
+        slew_from, slew_to, v3pa, coron_id,
+        verbose=verbose,
+        show_plots=show_plots,
+        plot_full = True,
+        return_offsets= True
+    )
+
