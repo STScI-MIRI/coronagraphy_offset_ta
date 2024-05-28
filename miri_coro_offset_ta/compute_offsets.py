@@ -181,8 +181,8 @@ def print_offset_information(
 
     print_output.append("\n")
     print_output.append("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
-    print_output.append(f"\tdX: {offset[0]:+2.6f} arcsec")
-    print_output.append(f"\tdY: {offset[1]:+2.6f} arcsec")
+    print_output.append(f"\tdX: {offset[0]:+4.6f} arcsec")
+    print_output.append(f"\tdY: {offset[1]:+4.6f} arcsec")
     print_output.append("\n")
     for line in print_output:
         print(line)
@@ -198,7 +198,7 @@ def compute_offsets(
         show_plots : bool = True,
         plot_full : bool = False,
         return_offsets : bool = False
-) -> np.ndarray | None :
+) -> np.ndarray :
     """
     Compute the slews for the TA sequences, print the offsets, and show the plots if requested
 
