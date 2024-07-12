@@ -247,7 +247,7 @@ def compute_offsets(
               'SCI': slew_to['label']}
 
 
-    # Offsets
+    # Offsets to science target
     sep = star_positions[0]['position'].separation(star_positions[1]['position']).to(units.arcsec)
     pa = star_positions[0]['position'].position_angle(star_positions[1]['position']).to(units.deg)
 
@@ -520,7 +520,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, v3pa, offset, colors, axes=N
     for ax in axes.ravel():
         acq_pos = (star_positions[0]['position'].ra.deg, star_positions[0]['position'].dec.deg)
         sci_pos = (star_positions[1]['position'].ra.deg, star_positions[1]['position'].dec.deg)
-        other_pos = [(pos.ra.deg, pos.dec.deg) for pos in star_positions[2:]]
+        other_pos = [(star['position'].ra.deg, star['position'].dec.deg) for star in star_positions[2:]]
         ax.scatter(*acq_pos,
                    c='k', label=f"ACQ/{star_positions[0]['label']}", marker='x', s=100)
         ax.scatter(*sci_pos,
@@ -636,7 +636,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, v3pa, offset, color
 
     acq_pos = (star_positions[0]['position'].ra.deg, star_positions[0]['position'].dec.deg)
     sci_pos = (star_positions[1]['position'].ra.deg, star_positions[1]['position'].dec.deg)
-    other_pos = [(pos.ra.dec, pos.dec.deg) for i in star_positions[2:]]
+    other_pos = [(star['position'].ra.deg, star['position'].dec.deg) for star in star_positions[2:]]
     ax.scatter(*acq_pos,
                c='k',
                label=f"ACQ/{star_positions[0]['label']}",
