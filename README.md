@@ -107,3 +107,7 @@ it is being imported into another script:
   of the x and y offset commands. Leave it as False if you intend to copy the
   offsets from the verbose output into APT, or set it to True if you want to
   capture the offsets in your code.
+- `other_stars`: This parameter allows you to define other targets to plot in
+  the field of view. It takes a list, each entry of which is a dictionary of the
+  same format as `slew_from`/`slew_to`.
+

@@ -75,6 +75,9 @@ def create_attmat(
       requirement, and the ROLL_REF keyword in the data. This is *not* the
       PA_V3 keyword value, which is the PA angle of the V3 axis measured at the
       telescope boresight.
+    idl_offset : tuple[float, float] = (0.0, 0.0)
+      allows you to specify an arbitrary position in IDL coordinates that
+      corresponds to the position
 
     Output
     ------
@@ -169,6 +172,14 @@ def print_offset_information(
     print_output.append(f"When the ACQ star is centered, the SCI star is at:")
     print_output.append(f"\tdX: {idl_coords[1]['position'][0]:+2.6f} arcsec")
     print_output.append(f"\tdY: {idl_coords[1]['position'][1]:+2.6f} arcsec")
+
+    if len(idl_coords) > 2:
+        print_output.append(f"\n")
+        print_output.append(f"Here are the positions of the other targets provided:")
+        for ic in idl_coords[2:]:
+            print_output.append(f"{ic['label']}")
+            print_output.append(f"\tdX: {ic['position'][0]:+2.6f} arcsec")
+            print_output.append(f"\tdY: {ic['position'][1]:+2.6f} arcsec")
 
     print_output.append(f"\n")
     print_output.append(f"Sanity check: on-sky angular separation should be the same distance as that of the slew.")
@@ -379,10 +390,15 @@ def plot_apers(
 def plot_before_offset_slew(
         aper_dict : dict,
         idl_coords : list,
-        star_positions : list =[]):
+        star_positions : list =[],
+        ax = None,
+):
     """Plot the scene on the detector when you're pointed at the acquisition target"""
     # plot 1 : POV of the detector
-    fig, ax = plt.subplots(1, 1, )
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, )
+    else:
+        fig = ax.get_figure()
     if star_positions != []:
         title = f"{star_positions[0]['label']} --> {star_positions[1]['label']}"
         fig.suptitle(title)
@@ -400,6 +416,12 @@ def plot_before_offset_slew(
                label=f"SCI/{idl_coords[1]['label']}",
                marker="*",
                c='k')
+    for star in idl_coords[2:]:
+        ax.scatter(*star['position'],
+                   # c='k',
+                   label=star['label'],
+                   marker='.',
+                   s=50)
     ax.add_artist(quad_boundaries(aper_dict['coro'], kwargs={'fc': 'grey'}))
     ax.legend()
     ax.set_aspect("equal")
@@ -407,7 +429,56 @@ def plot_before_offset_slew(
     return fig
 
 
-def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions={}, axes=None):
+def plot_after_offset_slew(
+        aper_dict : dict,
+        idl_coords : list,
+        offset : np.ndarray,
+        star_positions : list =[],
+        ax = None,
+):
+    """Plot the scene on the detector when you're pointed at the science target"""
+    # plot 1 : POV of the detector
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, )
+    else:
+        fig = ax.get_figure()
+    if star_positions != []:
+        title = f"{star_positions[0]['label']} --> {star_positions[1]['label']}"
+        fig.suptitle(title)
+    ax.set_title("""Positions *after* offset slew""")
+    frame = 'idl' # options are: tel (telescope), det (detector), sci (aperture)
+    aper_dict['mask'].plot(ax=ax, label=False, frame=frame, c='C0')
+    aper_dict['coro'].plot(ax=ax, label=False, frame=frame, c='C1', mark_ref=True)
+
+    ax.scatter(0 + offset[0], 0 + offset[1],
+               c='k',
+               label=f"ACQ/{idl_coords[0]['label']}",
+               marker='x',
+               s=100)
+    ax.scatter(*(idl_coords[1]['position'] + offset),
+               label=f"SCI/{idl_coords[1]['label']}",
+               marker="*",
+               c='k')
+    for star in idl_coords[2:]:
+        ax.scatter(*(star['position'] + offset),
+                   # c='k',
+                   label=star['label'],
+                   marker='.',
+                   s=50)
+    ax.add_artist(quad_boundaries(aper_dict['coro'], kwargs={'fc': 'grey'}))
+    ax.legend()
+    ax.set_aspect("equal")
+    ax.grid(True, ls='--', c='grey', alpha=0.5)
+    return fig
+
+
+def plot_detector_ta_sequence(
+        aper_dict,
+        ta_sequence,
+        idl_coords,
+        star_positions={},
+        axes=None
+) -> mpl.figure.Figure:
     """Plot the TA sequence as seen by the detector"""
     if axes is None:
         nrows = 1
@@ -443,14 +514,16 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
     ta_aper = aper_dict[ta_aper_id]
     acq_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id][0]['position'])
     sci_pos = ta_aper.idl_to_det(*ta_sequence[ta_aper_id][1]['position'])
-    other_pos = [ta_aper.idl_to_det(*i['position']) for i in ta_sequence[ta_aper_id][2:]]
+    acq_label = ta_sequence[ta_aper_id][0]['label']
+    sci_label = ta_sequence[ta_aper_id][1]['label']
 
     ax.scatter(*acq_pos, 
-               c='k', label='ACQ', marker='x', s=100)
+               c='k', label=acq_label, marker='x', s=100)
     ax.scatter(*sci_pos,
-               c='k', label='SCI', marker='*', s=100)
-    for pos in other_pos:
-        ax.scatter(*pos, c='k', marker='.', s=50)
+               c='k', label=sci_label, marker='*', s=100)
+    other_pos = {i['label']: ta_aper.idl_to_det(*i['position']) for i in ta_sequence[ta_aper_id][2:]}
+    for label, pos in other_pos.items():
+        ax.scatter(*pos, marker='.', s=50, label=label)
 
     # put the legend on this plot
     ax.legend(loc='best', ncol=1, fontsize='small', markerscale=0.7)
@@ -469,6 +542,9 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
                c='k', label='ACQ', marker='x', s=100)
     ax.scatter(*sci_pos,
                c='k', label='SCI', marker='*', s=100)
+    other_pos = [ta_aper.idl_to_det(*i['position']) for i in ta_sequence[ta_aper_id][2:]]
+    for pos in other_pos:
+        ax.scatter(*pos, marker='.', s=50)
 
 #     # TA star centered
     ax = axes[2]
@@ -479,21 +555,26 @@ def plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions
                c='k', label='ACQ', marker='x', s=100)
     ax.scatter(*aper.idl_to_det(*idl_coords[1]['position']),
                c='k', label='SCI', marker='*', s=100)
+    other_pos = [ta_aper.idl_to_det(*i['position']) for i in ta_sequence[ta_aper_id][2:]]
+    for pos in other_pos:
+        ax.scatter(*pos, marker='.', s=50)
 
     # Offset applied
     ax = axes[3]
     ax.set_title("Step 4\n" + "Offset applied")
     # apply the offset to the position
     aper  = aper_dict['coro']
+    acq_label = ta_sequence['slew'][0]['label']
     acq_pos = aper.idl_to_det(*ta_sequence['slew'][0]['position'])
+    sci_label = ta_sequence['slew'][1]['label']
     sci_pos = aper.idl_to_det(*ta_sequence['slew'][1]['position'])
     ax.scatter(*acq_pos, 
-               c='k', label='ACQ', marker='x', s=100)
+               c='k', label=f'ACQ/{acq_label}', marker='x', s=100)
     ax.scatter(*sci_pos, 
-               c='k', label='SCI', marker='*', s=100)
+               c='k', label=f'SCI/{sci_label}', marker='*', s=100)
     for pos in ta_sequence['slew'][2:]:
-        ax.scatter(*pos['position'], 
-                   c='k', marker='.', s=50)
+        ax.scatter(*aper.idl_to_det(*pos['position']),
+                   marker='.', s=50)
 
     for ax in axes:
         # plot customizations
@@ -526,7 +607,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, v3pa, offset, colors, axes=N
         ax.scatter(*sci_pos,
                    c='k', label=f"SCI/{star_positions[1]['label']}", marker='*', s=100)
         for pos in other_pos:
-            ax.scatter(*pos, c='k', marker='.', s=50)
+            ax.scatter(*pos, marker='.', s=50)
 
 
     # We start TA in the outer TA region
@@ -585,6 +666,9 @@ def plot_sky_ta_sequence(aper_dict, star_positions, v3pa, offset, colors, axes=N
         ax.grid(True, ls='--', c='grey', alpha=0.5)    
         # fix x-axis labels
         ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.2f'))
+    # RA increases to the left
+    # they share axes, so you just need to invert one of them
+    axes.flat[0].invert_xaxis()
 
     return fig
 
@@ -602,11 +686,25 @@ def plot_observing_sequence(
 
     Parameters
     ----------
-    define your parameters
+    aper_dict : dict
+      a dictionary of the various Siaf apertures to plot
+    ta_sequence : dict
+      a dictionary containing the IDL coordinates of the targets in the science
+      aperture at each stage of the TA sequence
+    v3pa : float
+      the v3pa angle of the aperture at the time of observation
+    idl_coords : ??
+      ??
+    star_positions : list
+      a list of sky positions for each star
+    offset : np.ndarray[float]
+      The x, y IDL offset that will be applied after TA
 
     Output
     ------
-    Define your output
+    fig : mpl.figure.Figure
+      A figure containing the plot of each step of the TA sequence.
+      The top row is in the detector frame, the bottom row is in the sky frame
 
     """
     nrows = 2 # top row: detector, bottom row: sky
@@ -649,7 +747,6 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, v3pa, offset, color
                s=100)
     for pos in other_pos:
         ax.scatter(*pos,
-                   c='k',
                    marker='.',
                    s=50)
 
@@ -703,6 +800,8 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, v3pa, offset, color
     # fix x-axis labels
     ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.2f'))
     ax.legend()
+    # RA increases to the left
+    ax.invert_xaxis()
 
     return fig
 
@@ -735,11 +834,13 @@ def make_plots(
 
     figures = []
 
-    fig1 = plot_before_offset_slew(aper_dict, idl_coords, star_positions)
+    fig1, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
+    fig1 = plot_before_offset_slew(aper_dict, idl_coords, star_positions, ax=axes[0])
+    fig1 = plot_after_offset_slew(aper_dict, idl_coords, offset, star_positions, ax=axes[1])
     figures.append(fig1)
 
     # Plot 2: The TA sequence on the detector
-    # compute the positions at each step of the sequence
+    # compute the positions in IDL coordinates at each step of the sequence
     ta_sequence = {}
     for aper_id in ['UR', 'CUR', 'coro']:
         aper = aper_dict[aper_id]
@@ -754,8 +855,10 @@ def make_plots(
     figures.append(fig2)
 
     # Plot 3: plot detector and sky POV on same figure
-    fig3 = plot_observing_sequence(aper_dict, ta_sequence, v3pa, idl_coords,
-                                   star_positions, offset)
+    fig3 = plot_observing_sequence(
+        aper_dict, ta_sequence, v3pa, idl_coords,
+        star_positions, offset
+    )
     figures.append(fig3)
 
     # # now, show the plots in correct order
