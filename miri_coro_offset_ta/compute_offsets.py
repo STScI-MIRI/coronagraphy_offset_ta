@@ -110,7 +110,7 @@ def sky_to_idl(
     ----------
     stars : list of {"label": label, "position": pos} elements to plot
       the first element is the ACQ target. The aperture is centerd on this target.
-    aper : SIAF object for the aperture being used (e.g. MIRIM_CORON1550)
+    aper : SIAF object for the aperture being used (e.g. MIRIM_MASK1550)
     pa : the PA in degrees of the V3 axis of the telescope (measured eastward of North) at the observation epoch
 
     Output
@@ -175,7 +175,7 @@ def print_offset_information(
 
     if len(idl_coords) > 2:
         print_output.append(f"\n")
-        print_output.append(f"Here are the positions of the other targets provided:")
+        print_output.append(f"Before the slew, here are the positions of the other targets provided:")
         for ic in idl_coords[2:]:
             print_output.append(f"{ic['label']}")
             print_output.append(f"\tdX: {ic['position'][0]:+2.6f} arcsec")
@@ -190,11 +190,20 @@ def print_offset_information(
     for row in check_str:
         print_output.append("{: >20} {: >20}".format(*row))
 
+    if len(idl_coords) > 2:
+        print_output.append(f"\n")
+        print_output.append(f"After the slew, here are the positions of other targets provided:")
+        for ic in idl_coords[2:]:
+            print_output.append(f"{ic['label']}")
+            print_output.append(f"\tdX: {ic['position'][0]+offset[0]:+2.6f} arcsec")
+            print_output.append(f"\tdY: {ic['position'][1]+offset[1]:+2.6f} arcsec")
+
     print_output.append("\n")
     print_output.append("Therefore, the commanded offsets that will move the coronagraph from the ACQ star to the SCI are:")
     print_output.append(f"\tdX: {offset[0]:+4.6f} arcsec")
     print_output.append(f"\tdY: {offset[1]:+4.6f} arcsec")
     print_output.append("\n")
+
     for line in print_output:
         print(line)
 
@@ -396,7 +405,7 @@ def plot_before_offset_slew(
     """Plot the scene on the detector when you're pointed at the acquisition target"""
     # plot 1 : POV of the detector
     if ax is None:
-        fig, ax = plt.subplots(1, 1, )
+        fig, ax = plt.subplots(1, 1, layout='constrained')
     else:
         fig = ax.get_figure()
     if star_positions != []:
@@ -439,7 +448,7 @@ def plot_after_offset_slew(
     """Plot the scene on the detector when you're pointed at the science target"""
     # plot 1 : POV of the detector
     if ax is None:
-        fig, ax = plt.subplots(1, 1, )
+        fig, ax = plt.subplots(1, 1, layout='constrained')
     else:
         fig = ax.get_figure()
     if star_positions != []:
@@ -483,7 +492,8 @@ def plot_detector_ta_sequence(
     if axes is None:
         nrows = 1
         ncols = 4
-        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(2*ncols, 4*nrows), sharex=True, sharey=True)
+        fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(2*ncols, 4*nrows),
+                                 sharex=True, sharey=True, layout='constrained')
     else:
         fig = axes[0].get_figure()
 
@@ -591,6 +601,7 @@ def plot_sky_ta_sequence(aper_dict, star_positions, v3pa, offset, colors, axes=N
         nrows = 1
         ncols = 4
         fig, axes = plt.subplots(nrows=nrows, ncols=ncols,
+                                 layout='constrained',
                                  sharex=True, sharey=True)
     else:
         fig = axes[0].get_figure()
@@ -725,7 +736,7 @@ def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, v3pa, offset, color
     """Plot the TA sequence on the sky, all on one axis"""
     nrows = 1
     ncols = 1
-    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(15, 5))
+    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(15, 5), layout='constrained')
 
     targ_label = f"{star_positions[0]['label']} --> {star_positions[1]['label']}"
     fig.suptitle(f"{targ_label}\nTA sequence, in RA/Dec")
@@ -834,7 +845,7 @@ def make_plots(
 
     figures = []
 
-    fig1, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6))
+    fig1, axes = plt.subplots(nrows=1, ncols=2, figsize=(12, 6), layout='constrained')
     fig1 = plot_before_offset_slew(aper_dict, idl_coords, star_positions, ax=axes[0])
     fig1 = plot_after_offset_slew(aper_dict, idl_coords, offset, star_positions, ax=axes[1])
     figures.append(fig1)
