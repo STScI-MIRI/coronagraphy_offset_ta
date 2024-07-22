@@ -57,7 +57,8 @@ def create_attmat(
         position : SkyCoord,
         aper : pysiaf.aperture.JwstAperture,
         pa : float,
-        idl_offset : tuple[float, float] = (0., 0.)
+        idl_offset : tuple[float, float] = (0., 0.),
+        set_matrix : bool = False
 ) -> np.ndarray:
     """
     Create an attitude matrix for JWST when the reference point of a particular
@@ -78,7 +79,8 @@ def create_attmat(
     idl_offset : tuple[float, float] = (0.0, 0.0)
       allows you to specify an arbitrary position in IDL coordinates that
       corresponds to the position
-
+    set_matrix : bool = True
+      if True, also set the matrix on the current aperture in addition to returning it
     Output
     ------
     attmat : np.ndarray
@@ -91,6 +93,8 @@ def create_attmat(
                                                     ra=position.ra.deg,
                                                     dec=position.dec.deg,
                                                     pa=pa)
+    if set_matrix == True:
+        aper.set_attitude_matrix(attmat)
     return attmat
 
 
@@ -214,13 +218,18 @@ def compute_offsets(
         v3pa: float,
         coron_id : str,
         other_stars : list = [],
-        verbose : bool = True,
+        verbose : int = 1,
         show_plots : bool = True,
         plot_full : bool = False,
-        return_offsets : bool = False
+        return_offsets : bool = False,
 ) -> np.ndarray :
     """
-    Compute the slews for the TA sequences, print the offsets, and show the plots if requested
+    Compute the slews for the TA sequences, print the offsets, and show the plots if requested.
+    How it works:
+    - Point the coronagraphic aperture (MASK or CORON) at the TA star by
+      setting an attitude matrix for the V3PA value
+    - The offset is the negative of the IDL coordinates of the SCI star
+    - The rest of the machinery is basically just making verification plots
 
     Parameters
     ----------
@@ -237,9 +246,11 @@ def compute_offsets(
       '1140', '1550', and 'LYOT'
     other_stars : list
       A list of dicts of other stars in the field, in the same format as slew_from/slew_to
-    verbose : bool = True
-      print diagnostics and offsets to screen. Set to False if you're returning
-      the values to variables in a script.
+    verbose : int = 1
+      print diagnostics and offsets to screen.
+      0 : nothing is printed
+      1 : all output is printed
+      2 : only the final IDl coordinates of the stars are printed
     show_plots : bool = True
       If True, display the diagnostic plots. If False, only print the offsets.
     plot_full : bool = True
@@ -288,13 +299,13 @@ def compute_offsets(
 
 
     idl_coords = sky_to_idl(star_positions,
-                            all_apers['coro'],
+                            all_apers['mask'],
                             v3pa)
     # The offset you apply is as if you were moving the science target - i.e.
     # the negative of its position
     offset = -1*np.array(idl_coords[1]['position'])
 
-    if verbose == True:
+    if verbose == 1:
         print_offset_information(
             slew_from=slew_from,
             slew_to=slew_to,
@@ -303,6 +314,14 @@ def compute_offsets(
             pa=pa,
             offset=offset
         )
+    if verbose == 2:
+        len_label = max(len(star['label']) for star in idl_coords)
+        print("IDL coordinates of all stars after slew:")
+        for star in idl_coords:
+            label = star['label']
+            idl = star['position']
+            print(f"{label:{len_label}s}:\t{idl[0]+offset[0]:+0.10f}, {idl[1]+offset[1]:+0.10f}")
+        print("")
 
     if show_plots == True:
         make_plots(
