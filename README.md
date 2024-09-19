@@ -56,14 +56,15 @@ acquisition (ACQ) targets, respectively.
 
 `v3pa` refers to the position angle of the telescope's V3 axis *at the reference
 position of the aperture used for the observation*. If that sounds confusing,
-the short version is it corresponds to the angle in APT's "Special Requirements
--> PA -> PA Range" menu if the `V3PA` radio button is selected. It also
+the short version is it corresponds to the angle in APT's `Special Requirements
+-> PA -> PA Range` menu if the `V3PA` radio button is selected. It also
 corresponds to the `ROLL_REF` header keyword (see the [JWST Keyword
 Dictionary](https://mast.stsci.edu/portal/Mashup/Clients/jwkeywords/) for
-keyword definitions).
+keyword definitions). If you are using this library to plan observations in APT,
+the `V3PA` field should match your `v3pa` variable.
 
-This is not to be confused with the `PA_APER` keyword, which corresponds to the
-`Aperture PA Range` radio button and refers to the amount by which the
+This is not to be confused with the `PA_APER` header keyword, which corresponds
+to the `Aperture PA Range` radio button and refers to the amount by which the
 detector-aligned coordinate system is rotated with respect to the `V3` axis. It
 also is not to be confused with the `PA_V3` header keyword, which refers to the
 V3 position angle at the position of the telescope boresight. Due to spherical
@@ -75,9 +76,11 @@ https://jwst-docs.stsci.edu/jppom/special-requirements/general-special-requireme
 In order to convert between the detector coordinate system and two positions on
 the sky, pySIAF requires information about the orientation of the telescope.
 Here, we provide this information using a combination of the coronagraph used
-(see `coron_id`), and position angle of the v3 axis of the telescope. More
-details about the different coordinate systems used in describing positions in
-the telescope can be found here:
+(see `coron_id`), and position angle of the v3 axis of the telescope, measured
+at the chosen coronagraph's reference position. 
+
+More details about the different coordinate systems used in
+describing positions in the telescope can be found here:
 https://jwst-docs.stsci.edu/jwst-observatory-characteristics/jwst-observatory-coordinate-system-and-field-of-regard/
 .
 
@@ -95,19 +98,27 @@ will be used for the observation. Options are:
 This is a switch to turn on (True) or off (False) the display of handy plots
 that show the TA process from the points of view of the sky and detector.
 
-#### Other parameters ####
+### `other_stars` ###
+
+This parameter allows you to define other targets to plot in the field of view.
+It takes a list, each entry of which is a dictionary of the same format as
+`slew_from`/`slew_to`.
+
+### `plot_full` ###
+
+If set to True, this will also plot the MIRI Imager footprint, in addition to
+the coronagraph aperture. This is usefull if you have selected `SUBARRAY ->
+FULL` in APT.
+
+#### Scripting parameters ####
 
 The function `compute_offsets` takes two more arguments that are more useful if
 it is being imported into another script:
 - `verbose`: a switch to print (True) or suppress (False) diagnostic text to the
   terminal. This text includes the offsets that should be entered into APT. Set
-  to False if you don't want the output and want to use the numerical offset
-  values in your own code.
+  to False if you don't want the printed output.
 - `return_offsets`: a switch to return (True) or not (False) the numerical value
   of the x and y offset commands. Leave it as False if you intend to copy the
   offsets from the verbose output into APT, or set it to True if you want to
   capture the offsets in your code.
-- `other_stars`: This parameter allows you to define other targets to plot in
-  the field of view. It takes a list, each entry of which is a dictionary of the
-  same format as `slew_from`/`slew_to`.
 
