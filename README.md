@@ -13,8 +13,8 @@ Author: Jonathan Aguilar Last update: March 6, 2024
 
 This library is meant to help users compute offsets in the detector frame of
 reference to enter into APT as Offset Special Requirements, in the case that
-they need to perform TA on a target other than their science target. 
-Users should edit the `if __name__ == '__main__:` section at the bottom of
+they need to perform TA on a target other than their science target. Users
+should edit the `if __name__ == '__main__:` section at the bottom of
 `compute_offsets.py` with the coordinates of their TA and Science targets, as
 well as the position angle of the V3 axis of the telescope. The instructions for
 editing each section are written in comments in the script. This will print out
@@ -77,10 +77,10 @@ In order to convert between the detector coordinate system and two positions on
 the sky, pySIAF requires information about the orientation of the telescope.
 Here, we provide this information using a combination of the coronagraph used
 (see `coron_id`), and position angle of the v3 axis of the telescope, measured
-at the chosen coronagraph's reference position. 
+at the chosen coronagraph's reference position.
 
-More details about the different coordinate systems used in
-describing positions in the telescope can be found here:
+More details about the different coordinate systems used in describing positions
+in the telescope can be found here:
 https://jwst-docs.stsci.edu/jwst-observatory-characteristics/jwst-observatory-coordinate-system-and-field-of-regard/
 .
 
@@ -128,15 +128,29 @@ it is being imported into another script:
 
 ### How do I choose my acquisition target? ###
 
-To choose an acquisition target, you should consider the brightness, separation, and position angle:
-- Brightness: it should be bright enough to achieve high SNR in the TA filter without saturating ([[link]])
-- Separation : it should be closer than the [visit-splitting distance](https://jwst-docs.stsci.edu/jwst-astronomers-proposal-tool-overview/additional-jwst-apt-functionality/apt-visit-splitting), which ranges between 30"-80" depending on the availability of guide stars for a particular target.
-- Position angle: The acquisition target must be clear of diffraction spikes from nearby sources. This is especially important if the science target is very bright.[WebbPSF](https://webbpsf.readthedocs.io/) can be used to determine if your TA target will be clear of the diffraction spikes. Determine the orientation of your system for a given PA angle using `compute_offsets`, which will print the IDL positions of the sources you provide.
+To choose an acquisition target, you should consider the brightness, separation,
+and position angle:
+- Brightness: it should be bright enough to achieve high SNR in the TA filter
+  without saturating (see the [ETC](https://jwst.etc.stsci.edu/)).
+- Separation : it should be closer than the [visit-splitting
+  distance](https://jwst-docs.stsci.edu/jwst-astronomers-proposal-tool-overview/additional-jwst-apt-functionality/apt-visit-splitting),
+  which ranges between 30"-80" depending on the availability of guide stars for
+  a particular target.
+- Position angle: The acquisition target must be clear of diffraction spikes
+  from nearby sources. This is especially important if the science target is
+  very bright. [WebbPSF](https://webbpsf.readthedocs.io/) can be used to
+  determine if your TA target will be clear of the diffraction spikes. Determine
+  the orientation of your system for a given PA angle using `compute_offsets`,
+  which will print the IDL positions of the sources you provide.
 
 ### How do I choose dates and V3PA angles? ###
 
-To see available dates and V3PA angles, go to the Visit Planner window in APT and find the `Reports` menu at the bottom. Select a visit, and then select `Total Roll Analysis for Visit`. This will give you a plot of available V3 PA angles against dates, as well as a table that can be read into a script.
+To see available dates and V3PA angles, go to the Visit Planner window in APT
+and find the `Reports` menu at the bottom. Select a visit, and then select
+`Total Roll Analysis for Visit`. This will give you a plot of available V3 PA
+angles against dates, as well as a table that can be read into a script.
 
 ### Do I need to calculate a separate offset for each roll? ###
 
-Yes, unless your roll angle is very small or your acquisition target is very close.
+Yes, unless your roll angle is very small or your acquisition target is very
+close.
