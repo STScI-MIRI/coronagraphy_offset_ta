@@ -98,13 +98,13 @@ will be used for the observation. Options are:
 This is a switch to turn on (True) or off (False) the display of handy plots
 that show the TA process from the points of view of the sky and detector.
 
-### `other_stars` ###
+#### `other_stars` ###
 
 This parameter allows you to define other targets to plot in the field of view.
 It takes a list, each entry of which is a dictionary of the same format as
 `slew_from`/`slew_to`.
 
-### `plot_full` ###
+#### `plot_full` ###
 
 If set to True, this will also plot the MIRI Imager footprint, in addition to
 the coronagraph aperture. This is usefull if you have selected `SUBARRAY ->
@@ -122,3 +122,21 @@ it is being imported into another script:
   offsets from the verbose output into APT, or set it to True if you want to
   capture the offsets in your code.
 
+
+
+## FAQs for creating your APT program ##
+
+### How do I choose my acquisition target? ###
+
+To choose an acquisition target, you should consider the brightness, separation, and position angle:
+- Brightness: it should be bright enough to achieve high SNR in the TA filter without saturating ([[link]])
+- Separation : it should be closer than the [visit-splitting distance](https://jwst-docs.stsci.edu/jwst-astronomers-proposal-tool-overview/additional-jwst-apt-functionality/apt-visit-splitting), which ranges between 30"-80" depending on the availability of guide stars for a particular target.
+- Position angle: The acquisition target must be clear of diffraction spikes from nearby sources. This is especially important if the science target is very bright.[WebbPSF](https://webbpsf.readthedocs.io/) can be used to determine if your TA target will be clear of the diffraction spikes. Determine the orientation of your system for a given PA angle using `compute_offsets`, which will print the IDL positions of the sources you provide.
+
+### How do I choose dates and V3PA angles? ###
+
+To see available dates and V3PA angles, go to the Visit Planner window in APT and find the `Reports` menu at the bottom. Select a visit, and then select `Total Roll Analysis for Visit`. This will give you a plot of available V3 PA angles against dates, as well as a table that can be read into a script.
+
+### Do I need to calculate a separate offset for each roll? ###
+
+Yes, unless your roll angle is very small or your acquisition target is very close.
