@@ -28,7 +28,7 @@ It is suggested that users make a new copy of `compute_offsets.py` or
 It can also be imported as a module after downloading the source code from github:
 ```
 cd $directory
-pip install -e .
+pip install .
 ```
 
 Then from a python terminal:
