@@ -9,10 +9,13 @@ setup(
     # Needed to actually package something
     packages=['miri_coro_offset_ta'],
     # Needed for dependencies
-    install_requires=['matplotlib',
-                      'numpy',
-                      'astropy',
-                      'pysiaf'],
+    install_requires=[
+        'ipywidgets',
+        'matplotlib',
+        'numpy',
+        'astropy',
+        'pysiaf'
+    ],
     # *strongly* suggested for sharing
     version='0.1',
     # The license can be anything you like
