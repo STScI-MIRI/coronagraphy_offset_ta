@@ -154,3 +154,7 @@ angles against dates, as well as a table that can be read into a script.
 
 Yes, unless your roll angle is very small or your acquisition target is very
 close.
+
+## All-Instrument Interface ##
+
+This module now includes a limited interface for computing the offset for any two targets for an arbitrary aperture in JWST. See `./all_instruments/All_Instrument_Notebook.ipynb`.
