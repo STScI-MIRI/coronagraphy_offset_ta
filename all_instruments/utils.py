@@ -35,31 +35,38 @@ from pysiaf import Siaf
 instruments = ['NIRCam', 'NIRSpec', 'NIRISS', 'MIRI', 'FGS']
 
 class ComputeOffsets():
-    def __init__(self):
-        self.ui = self.make_ui()
+    def __init__(self, initial_values={}):
+        """
+        Generate the Offset Computation GUI.
+        Can initialize from a dictionary containing the entries:
+        initial_values={
+          'pa': 180.,
+          'acq_ra' = 90., acq_dec = 90., sci_ra = 91., sci_dec=89.}
+        """
+        self.ui = self.make_ui(initial_values)
 
-    def _update_apers(self, *args):
+    def _update_apers(self, *args, initial_values={}):
         self.acq_apers = [i for i in Siaf(self.instr_picker.value).apernames if '_TA' in i]
         self.sci_apers = [i for i in Siaf(self.instr_picker.value).apernames if '_TA' not in i]
         self.acq_aper_picker.options = self.acq_apers
         self.sci_aper_picker.options = self.sci_apers
 
         try:
-            self.acq_aper_picker.value = self.acq_apers[0]
+            self.acq_aper_picker.value = initial_values.get('acq_aper', self.acq_apers[0]).upper()
         except IndexError:
             pass
         try:
-            self.sci_aper_picker.value = self.sci_apers[0]
+            self.sci_aper_picker.value = initial_values.get('sci_aper', self.sci_apers[0]).upper()
         except IndexError:
             pass
 
 
-    def make_starpos_widget(self, title):
+    def make_starpos_widget(self, title, initial_ra=0., initial_dec=0.):
         star_widget = widgets.VBox([
             widgets.Label(value=title),
             widgets.HBox([
-                widgets.FloatText(value=0, description='RA [deg]', disabled=False),
-                widgets.FloatText(value=0, description='Dec [deg]', disabled=False)
+                widgets.FloatText(value=initial_ra, description='RA [deg]', disabled=False),
+                widgets.FloatText(value=initial_dec, description='Dec [deg]', disabled=False)
             ])
         ])
         return star_widget
@@ -126,19 +133,23 @@ class ComputeOffsets():
             other_stars = stars
         return other_stars
 
-    def _make_widgets(self):
+    def _make_widgets(self, initial_values={}):
         """
         Container method for making and initializing the widgets
         """
-        self.instr_picker = widgets.Dropdown(options=instruments, value=instruments[0], description='Instrument')
+        self.instr_picker = widgets.Dropdown(
+            options = instruments,
+            value = initial_values.get('instr', instruments[0]).upper(),
+            description='Instrument'
+        )
         self.instr_picker.observe(self._update_apers)
         # set self.acq_apers and self.sci_apers
         self.acq_aper_picker = widgets.Dropdown(description='ACQ aperture')
         self.sci_aper_picker = widgets.Dropdown(description='SCI aperture')
-        self._update_apers()
+        self._update_apers(initial_values=initial_values)
         # Position Angle
         self.PA_setter = widgets.BoundedFloatText(
-            value=0,
+            value=initial_values.get("pa", 0),
             min=0.,
             max=360.,
             step=0.1,
@@ -146,10 +157,18 @@ class ComputeOffsets():
             disabled=False
         )
         # star positions
-        self.acq_pos_widget = self.make_starpos_widget("ACQ target position")
-        self.sci_pos_widget = self.make_starpos_widget("SCI target position")
+        self.acq_pos_widget = self.make_starpos_widget(
+            "ACQ target position",
+            initial_ra = initial_values.get("acq_ra", 0.),
+            initial_dec = initial_values.get("acq_dec", 0.),
+        )
+        self.sci_pos_widget = self.make_starpos_widget(
+            "SCI target position",
+            initial_ra = initial_values.get("sci_ra", 0.),
+            initial_dec = initial_values.get("sci_dec", 0.)
+        )
         self.other_stars_widget = widgets.Textarea(
-            value='',
+            value=initial_values.get("other_stars", ''),
             placeholder='label : (ra.deg, dec.deg)',
             description='Other stars: ',
             disabled=False,
@@ -164,8 +183,9 @@ class ComputeOffsets():
         self.output_offset = widgets.Output()
         self.output_before = widgets.Output()
         self.output_after = widgets.Output()
-    def make_ui(self):
-        self._make_widgets()
+
+    def make_ui(self, initial_values={}):
+        self._make_widgets(initial_values)
         ui = widgets.VBox([
             widgets.HBox([
                 widgets.VBox([
