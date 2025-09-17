@@ -36,33 +36,6 @@ instruments = ['NIRCam', 'NIRSpec', 'NIRISS', 'MIRI', 'FGS']
 
 class ComputeOffsets():
     def __init__(self):
-        self.instr_picker = widgets.Dropdown(options=instruments, value=instruments[0], description='Instrument')
-        self.instr_picker.observe(self._update_apers)
-        # set self.acq_apers and self.sci_apers
-        self.acq_aper_picker = widgets.Dropdown(description='ACQ aperture')
-        self.sci_aper_picker = widgets.Dropdown(description='SCI aperture')
-        self._update_apers()
-        # Position Angle
-        self.PA_setter = widgets.BoundedFloatText(
-            value=0,
-            min=0.,
-            max=360.,
-            step=0.1,
-            description='PA (deg):',
-            disabled=False
-        )
-        # star positions
-        self.acq_pos_widget = self.make_starpos_widget("ACQ target position")
-        self.sci_pos_widget = self.make_starpos_widget("SCI target position")
-        self.compute_offsets_button = widgets.Button(
-            description='Compute offset',
-            disabled=False,
-            button_style=''
-        )
-        self.compute_offsets_button.on_click(self._compute_offsets)
-        self.output = widgets.Output()
-
-        # put it all together in a widget
         self.ui = self.make_ui()
 
     def _update_apers(self, *args):
@@ -112,19 +85,87 @@ class ComputeOffsets():
         v3pa = self.PA_setter.value
         aperture = Siaf(self.instr_picker.value)[self.sci_aper_picker.value]
 
-        offsets = compute_offsets(
+        other_stars = self._parse_other_stars()
+
+        idl_coords = compute_idl_after_ta(
             acq_pos, sci_pos, v3pa, aperture,
-            verbose=True,
-            return_offsets= True
+            other_stars = other_stars,
+        )
+        self.idl_coords_after_ta = {i['label']: i['position'] for i in idl_coords}
+        self.offset_to_sci = self.idl_coords_after_ta['SCI'] * -1
+        self.idl_coords_after_slew = {k: v + self.offset_to_sci for k, v in self.idl_coords_after_ta.items()}
+
+        self.output_offset.clear_output()
+        self.output_before.clear_output()
+        self.output_after.clear_output()
+        outputstr = f"X offset [arcsec]: {self.offset_to_sci[0]:+0.4f}\nY offset [arcsec]: {self.offset_to_sci[1]:+0.4f}"
+        self.output_offset.append_stdout(outputstr)
+        outputstr = f"IDL positions of stars after TA:\n"
+        outputstr += "-"*(len(outputstr)-1) + "\n"
+        outputstr += "\n".join(f"{k}\t{v[0]:+0.4f}\t{v[1]:+0.4f}" for k, v in self.idl_coords_after_ta.items())
+        self.output_before.append_stdout(outputstr)
+        outputstr = f"IDL positions of stars after slew:\n"
+        outputstr += "-"*(len(outputstr)-1) + "\n"
+        outputstr += "\n".join(f"{k}\t{v[0]:+0.4f}\t{v[1]:+0.4f}" for k, v in self.idl_coords_after_slew.items())
+        self.output_after.append_stdout(outputstr)
+
+
+
+    def _parse_other_stars(self) -> list:
+        """Parse the entries in the other_stars_widget and return a list"""
+        other_stars = []
+        if self.other_stars_widget.value != '':
+            stars = self.other_stars_widget.value.split("\n")
+            stars = [dict(zip(['label', 'position'], i.split(":"))) for i in stars]
+            for star in stars:
+                position = SkyCoord(
+                    *[float(i) for i in star['position'].strip()[1:-1].split(",")],
+                    frame='icrs', unit='deg',
+                )
+                star['position'] = position
+            other_stars = stars
+        return other_stars
+
+    def _make_widgets(self):
+        """
+        Container method for making and initializing the widgets
+        """
+        self.instr_picker = widgets.Dropdown(options=instruments, value=instruments[0], description='Instrument')
+        self.instr_picker.observe(self._update_apers)
+        # set self.acq_apers and self.sci_apers
+        self.acq_aper_picker = widgets.Dropdown(description='ACQ aperture')
+        self.sci_aper_picker = widgets.Dropdown(description='SCI aperture')
+        self._update_apers()
+        # Position Angle
+        self.PA_setter = widgets.BoundedFloatText(
+            value=0,
+            min=0.,
+            max=360.,
+            step=0.1,
+            description='PA (deg):',
+            disabled=False
+        )
+        # star positions
+        self.acq_pos_widget = self.make_starpos_widget("ACQ target position")
+        self.sci_pos_widget = self.make_starpos_widget("SCI target position")
+        self.other_stars_widget = widgets.Textarea(
+            value='',
+            placeholder='label : (ra.deg, dec.deg)',
+            description='Other stars: ',
+            disabled=False,
         )
 
-        self.offsets = offsets
-        self.output.clear_output()
-        outputstr = f"X offset [arcsec]: {offsets[0]}\nY offset [arcsec]: {offsets[1]}"
-        self.output.append_stdout(outputstr)
-
-
+        self.compute_offsets_button = widgets.Button(
+            description='Compute offset',
+            disabled=False,
+            button_style=''
+        )
+        self.compute_offsets_button.on_click(self._compute_offsets)
+        self.output_offset = widgets.Output()
+        self.output_before = widgets.Output()
+        self.output_after = widgets.Output()
     def make_ui(self):
+        self._make_widgets()
         ui = widgets.VBox([
             widgets.HBox([
                 widgets.VBox([
@@ -133,13 +174,16 @@ class ComputeOffsets():
                     # widgets.VBox([self.acq_aper_picker, self.sci_aper_picker]),
                     self.PA_setter,
                 ]),
-                widgets.VBox([
-                    self.acq_pos_widget,
-                    self.sci_pos_widget,
+                widgets.HBox([
+                    widgets.VBox([
+                        self.acq_pos_widget,
+                        self.sci_pos_widget,
+                    ]),
+                    self.other_stars_widget,
                 ]),
             ]),
             self.compute_offsets_button,
-            self.output,
+            widgets.HBox([self.output_offset, self.output_before, self.output_after]),
         ])
         return ui
 
@@ -150,7 +194,150 @@ class ComputeOffsets():
 #------------------------------------------------------#
 #----------------- Offset Computation -----------------#
 #------------------------------------------------------#
-miri = Siaf("MIRI")
+def compute_idl_after_ta(
+    slew_from: dict,
+    slew_to: dict,
+    v3pa: float,
+    sci_aper : str,
+    other_stars : list = [],
+) -> list[dict]:
+    """
+    Compute the IDL positions of all the given stars whent he ACQ target is at the reference position.
+
+    Parameters
+    ----------
+    slew_from: dict
+      A dictionary containing the label and position of the TA target, set by
+      the user in compute_offsets.py
+    slew_to: dict
+      A dictionary containing the label and position of the science target, set by
+      the user in compute_offsets.py
+    v3pa: float
+      The PA_V3 angle of the telescope for this observation
+    coron_id : str
+      Identifier for the desired coronagraphic subarray. Must be one of '1065',
+      '1140', '1550', and 'LYOT'
+    other_stars : list
+      A list of dicts of other stars in the field, in the same format as slew_from/slew_to
+    verbose : int = 1
+      print diagnostics and offsets to screen.
+      0 : nothing is printed
+      1 : all output is printed
+      2 : only the final IDl coordinates of the stars are printed
+
+    Output
+    ------
+    Returns a list of dicts of floats
+
+    """
+    # make sure coron_id is valid
+    star_positions = [slew_from, slew_to] + other_stars
+    idl_coords = sky_to_idl(star_positions,
+                            sci_aper,
+                            v3pa)
+    return idl_coords
+
+def apply_offset(
+    idl_coords : dict,
+) -> dict:
+    sci_idl = idl_coords.pop('SCI')
+    offset_to_sci = -1 * sci_idl
+    final_idl = {l: c + offset_to_sci for l, c in idl_coords.items()}
+    return final_idl
+
+def compute_offsets(
+        slew_from: dict,
+        slew_to: dict,
+        v3pa: float,
+        sci_aper : str,
+        other_stars : list = [],
+        verbose : int = 1,
+        return_offsets : bool = False,
+) -> np.ndarray :
+    """
+    Compute the slews for the TA sequences, print the offsets, and show the plots if requested.
+    How it works:
+    - Point the coronagraphic aperture (MASK or CORON) at the TA star by
+      setting an attitude matrix for the V3PA value
+    - The offset is the negative of the IDL coordinates of the SCI star
+    - The rest of the machinery is basically just making verification plots
+
+    Parameters
+    ----------
+    slew_from: dict
+      A dictionary containing the label and position of the TA target, set by
+      the user in compute_offsets.py
+    slew_to: dict
+      A dictionary containing the label and position of the science target, set by
+      the user in compute_offsets.py
+    v3pa: float
+      The PA_V3 angle of the telescope for this observation
+    coron_id : str
+      Identifier for the desired coronagraphic subarray. Must be one of '1065',
+      '1140', '1550', and 'LYOT'
+    other_stars : list
+      A list of dicts of other stars in the field, in the same format as slew_from/slew_to
+    verbose : int = 1
+      print diagnostics and offsets to screen.
+      0 : nothing is printed
+      1 : all output is printed
+      2 : only the final IDl coordinates of the stars are printed
+    show_plots : bool = True
+      If True, display the diagnostic plots. If False, only print the offsets.
+    return_offsets : bool = False
+      If True, return an array of dx and dy offsets
+
+    Output
+    ------
+    Prints offsets and shows plots. Returns a dict of floats
+
+    """
+    # make sure coron_id is valid
+    star_positions = [slew_from, slew_to] + other_stars
+    labels = {'ACQ': slew_from['label'],
+              'SCI': slew_to['label']}
+
+
+    # Offsets to science target
+    sep = star_positions[0]['position'].separation(star_positions[1]['position']).to(units.arcsec)
+    pa = star_positions[0]['position'].position_angle(star_positions[1]['position']).to(units.deg)
+
+    idl_coords = sky_to_idl(star_positions,
+                            sci_aper,
+                            v3pa)
+    # The offset you apply is as if you were moving the science target - i.e.
+    # the negative of its position
+    offset = -1*np.array(idl_coords[1]['position'])
+
+    if verbose == 1:
+        print_offset_information(
+            slew_from=slew_from,
+            slew_to=slew_to,
+            idl_coords=idl_coords,
+            sep=sep,
+            pa=pa,
+            offset=offset
+        )
+    if verbose == 2:
+        len_label = max(len(star['label']) for star in idl_coords)
+        print("IDL coordinates of all stars after slew:")
+        for star in idl_coords:
+            label = star['label']
+            idl = star['position']
+            print(f"{label:{len_label}s}:\t{idl[0]+offset[0]:+0.10f}, {idl[1]+offset[1]:+0.10f}")
+        print("")
+
+    # if show_plots == True:
+    #     make_plots(
+    #         all_apers,
+    #         star_positions,
+    #         v3pa,
+    #         idl_coords,
+    #         offset,
+    #     )
+
+    if return_offsets == True:
+        return offset
 
 def create_attmat(
         position : SkyCoord,
@@ -310,112 +497,6 @@ def print_offset_information(
     for line in print_output:
         print(line)
 
-
-def compute_offsets(
-        slew_from: dict,
-        slew_to: dict,
-        v3pa: float,
-        sci_aper : str,
-        other_stars : list = [],
-        verbose : int = 1,
-        return_offsets : bool = False,
-) -> np.ndarray :
-    """
-    Compute the slews for the TA sequences, print the offsets, and show the plots if requested.
-    How it works:
-    - Point the coronagraphic aperture (MASK or CORON) at the TA star by
-      setting an attitude matrix for the V3PA value
-    - The offset is the negative of the IDL coordinates of the SCI star
-    - The rest of the machinery is basically just making verification plots
-
-    Parameters
-    ----------
-    slew_from: dict
-      A dictionary containing the label and position of the TA target, set by
-      the user in compute_offsets.py
-    slew_to: dict
-      A dictionary containing the label and position of the science target, set by
-      the user in compute_offsets.py
-    v3pa: float
-      The PA_V3 angle of the telescope for this observation
-    coron_id : str
-      Identifier for the desired coronagraphic subarray. Must be one of '1065',
-      '1140', '1550', and 'LYOT'
-    other_stars : list
-      A list of dicts of other stars in the field, in the same format as slew_from/slew_to
-    verbose : int = 1
-      print diagnostics and offsets to screen.
-      0 : nothing is printed
-      1 : all output is printed
-      2 : only the final IDl coordinates of the stars are printed
-    show_plots : bool = True
-      If True, display the diagnostic plots. If False, only print the offsets.
-    return_offsets : bool = False
-      If True, return an array of dx and dy offsets
-
-    Output
-    ------
-    Prints offsets and shows plots. Returns a dict of floats
-
-    """
-    coron_ids = ['1065','1140','1550', 'LYOT']
-    # make sure coron_id is valid
-    star_positions = [slew_from, slew_to] + other_stars
-    labels = {'ACQ': slew_from['label'],
-              'SCI': slew_to['label']}
-
-
-    # Offsets to science target
-    sep = star_positions[0]['position'].separation(star_positions[1]['position']).to(units.arcsec)
-    pa = star_positions[0]['position'].position_angle(star_positions[1]['position']).to(units.deg)
-
-
-    # There are two relevant apertures: MIRIM_MASK[XXXX], which is the entire subarray, and
-    # MIRIM_CORON[XXXX], which is just the portion that gets illuminated
-    # let's combine all the SIAF objects in a dict for convenience
-
-    # all_apers = {}
-    # all_apers['UR'] = miri[f'MIRIM_TA{coron_id}_UR']
-    # all_apers['CUR'] = miri[f'MIRIM_TA{coron_id}_CUR']
-    # all_apers['coro'] = miri[f'MIRIM_CORON{coron_id}']
-    # all_apers['mask'] = miri[f'MIRIM_MASK{coron_id}']
-
-    idl_coords = sky_to_idl(star_positions,
-                            sci_aper,
-                            v3pa)
-    # The offset you apply is as if you were moving the science target - i.e.
-    # the negative of its position
-    offset = -1*np.array(idl_coords[1]['position'])
-
-    # if verbose == 1:
-    #     print_offset_information(
-    #         slew_from=slew_from,
-    #         slew_to=slew_to,
-    #         idl_coords=idl_coords,
-    #         sep=sep,
-    #         pa=pa,
-    #         offset=offset
-    #     )
-    # if verbose == 2:
-    #     len_label = max(len(star['label']) for star in idl_coords)
-    #     print("IDL coordinates of all stars after slew:")
-    #     for star in idl_coords:
-    #         label = star['label']
-    #         idl = star['position']
-    #         print(f"{label:{len_label}s}:\t{idl[0]+offset[0]:+0.10f}, {idl[1]+offset[1]:+0.10f}")
-    #     print("")
-
-    # if show_plots == True:
-    #     make_plots(
-    #         all_apers,
-    #         star_positions,
-    #         v3pa,
-    #         idl_coords,
-    #         offset,
-    #     )
-
-    if return_offsets == True:
-        return offset
 
 
 def work_backwards(
