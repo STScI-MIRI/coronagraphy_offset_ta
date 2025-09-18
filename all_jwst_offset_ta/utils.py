@@ -43,7 +43,8 @@ class ComputeOffsets():
           'pa': 180.,
           'acq_ra' = 90., acq_dec = 90., sci_ra = 91., sci_dec=89.}
         """
-        self.ui = self.make_ui(initial_values)
+        self.initial_values = initial_values
+        self.ui = self._make_ui()
 
     def _update_apers(self, *args, initial_values={}):
         self.acq_apers = [i for i in Siaf(self.instr_picker.value).apernames if '_TA' in i]
@@ -177,33 +178,42 @@ class ComputeOffsets():
         self.compute_offsets_button = widgets.Button(
             description='Compute offset',
             disabled=False,
-            button_style=''
+            button_style='success'
         )
         self.compute_offsets_button.on_click(self._compute_offsets)
         self.output_offset = widgets.Output()
         self.output_before = widgets.Output()
         self.output_after = widgets.Output()
 
-    def make_ui(self, initial_values={}):
-        self._make_widgets(initial_values)
+    def _make_ui(self):
+        self._make_widgets(self.initial_values)
+        grid = widgets.GridspecLayout(
+            n_rows=8, n_columns=3,
+            style=dict(background='white')
+        )
+        grid[0, :] = widgets.Label(
+            value="IDL Coordinate and Offset TA Calculator".upper(),
+            layout = widgets.Layout(display='flex', justify_content='center'),
+        )
+        grid[1, 0] = self.instr_picker
+        grid[2, 0] = self.sci_aper_picker
+        grid[4, 0] = self.PA_setter
+
+        grid[1:4, 1] = self.acq_pos_widget
+        grid[4:7, 1] = self.sci_pos_widget
+
+        grid[1:-1, 2] = self.other_stars_widget
+
+        grid[-1, 0] = self.compute_offsets_button
+        output_grid = widgets.GridspecLayout(
+            n_rows=1, n_columns=3,
+        )
+        output_grid[0, 0] = self.output_offset
+        output_grid[0, 1] = self.output_before
+        output_grid[0, 2] = self.output_after
         ui = widgets.VBox([
-            widgets.HBox([
-                widgets.VBox([
-                    self.instr_picker,
-                    self.sci_aper_picker,
-                    # widgets.VBox([self.acq_aper_picker, self.sci_aper_picker]),
-                    self.PA_setter,
-                ]),
-                widgets.HBox([
-                    widgets.VBox([
-                        self.acq_pos_widget,
-                        self.sci_pos_widget,
-                    ]),
-                    self.other_stars_widget,
-                ]),
-            ]),
-            self.compute_offsets_button,
-            widgets.HBox([self.output_offset, self.output_before, self.output_after]),
+            grid, output_grid
+            # widgets.HBox([, self.output_before, self.output_after]),
         ])
         return ui
 
