@@ -43,26 +43,41 @@ class ComputeOffsets():
           'pa': 180.,
           'acq_ra' = 90., acq_dec = 90., sci_ra = 91., sci_dec=89.}
         """
-        self.initial_values = initial_values
+        self._initial_values = initial_values
+        self._current_values = {k: v for k, v in initial_values.items()}
         self.ui = self._make_ui()
 
     def _update_apers(self, *args, initial_values={}):
-        self.acq_apers = [i for i in Siaf(self.instr_picker.value).apernames if '_TA' in i]
-        self.sci_apers = [i for i in Siaf(self.instr_picker.value).apernames if '_TA' not in i]
-        self.acq_aper_picker.options = self.acq_apers
-        self.sci_aper_picker.options = self.sci_apers
+        self._acq_apers = [i for i in Siaf(self._instr_picker.value).apernames if '_TA' in i]
+        self._sci_apers = [i for i in Siaf(self._instr_picker.value).apernames if '_TA' not in i]
+        self._acq_aper_picker.options = self._acq_apers
+        self._sci_aper_picker.options = self._sci_apers
 
         try:
-            self.acq_aper_picker.value = initial_values.get('acq_aper', self.acq_apers[0]).upper()
+            self._acq_aper_picker.value = initial_values.get('acq_aper', self._acq_apers[0]).upper()
         except IndexError:
             pass
         try:
-            self.sci_aper_picker.value = initial_values.get('sci_aper', self.sci_apers[0]).upper()
+            self._sci_aper_picker.value = initial_values.get('sci_aper', self._sci_apers[0]).upper()
         except IndexError:
             pass
 
+    def _update_config_dict(self):
+        self._current_values['instr'] = self._instr_picker.value
+        self._current_values['sci_aper'] = self._sci_aper_picker.value
+        self._current_values['pa'] = self._PA_setter.value
+        self._current_values['acq_ra'] = self._acq_pos_widget.children[1].children[0].value
+        self._current_values['acq_dec'] = self._acq_pos_widget.children[1].children[1].value
+        self._current_values['sci_ra'] = self._sci_pos_widget.children[1].children[0].value
+        self._current_values['sci_dec'] = self._sci_pos_widget.children[1].children[1].value
+        self._current_values['other_stars'] = self._other_stars_widget.value
 
-    def make_starpos_widget(self, title, initial_ra=0., initial_dec=0.):
+    def _get_aper(self):
+        aper = Siaf(self._instr_picker.value)[self._sci_aper_picker.value]
+        return aper
+
+    def _make_starpos_widget(self, title, initial_ra=0., initial_dec=0.):
+        """Make a widget for getting a star's RA and Dec"""
         star_widget = widgets.VBox([
             widgets.Label(value=title),
             widgets.VBox([
@@ -72,58 +87,23 @@ class ComputeOffsets():
         ])
         return star_widget
 
-    def _compute_offsets(self, *args):
-        acq_pos = {
-            'label': 'ACQ',
-            'position': SkyCoord(
-                self.acq_pos_widget.children[1].children[0].value,
-                self.acq_pos_widget.children[1].children[1].value,
-                frame='icrs', unit='deg',
-            ),
-        }
-        sci_pos = {
-            'label': 'SCI',
-            'position': SkyCoord(
-                self.sci_pos_widget.children[1].children[0].value,
-                self.sci_pos_widget.children[1].children[1].value,
-                frame='icrs', unit='deg',
-            )
-        }
-
-        v3pa = self.PA_setter.value
-        aperture = Siaf(self.instr_picker.value)[self.sci_aper_picker.value]
-
-        other_stars = self._parse_other_stars()
-
-        idl_coords = compute_idl_after_ta(
-            acq_pos, sci_pos, v3pa, aperture,
-            other_stars = other_stars,
-        )
-        self.idl_coords_after_ta = {i['label']: i['position'] for i in idl_coords}
-        self.offset_to_sci = self.idl_coords_after_ta['SCI'] * -1
-        self.idl_coords_after_slew = {k: v + self.offset_to_sci for k, v in self.idl_coords_after_ta.items()}
-
-        self.output_offset.clear_output()
-        self.output_before.clear_output()
-        self.output_after.clear_output()
-        outputstr = f"X offset [arcsec]: {self.offset_to_sci[0]:+0.4f}\nY offset [arcsec]: {self.offset_to_sci[1]:+0.4f}"
-        self.output_offset.append_stdout(outputstr)
-        outputstr = f"IDL positions of stars after TA:\n"
-        outputstr += "-"*(len(outputstr)-1) + "\n"
-        outputstr += "\n".join(f"{k}\t{v[0]:+0.4f}\t{v[1]:+0.4f}" for k, v in self.idl_coords_after_ta.items())
-        self.output_before.append_stdout(outputstr)
-        outputstr = f"IDL positions of stars after slew:\n"
-        outputstr += "-"*(len(outputstr)-1) + "\n"
-        outputstr += "\n".join(f"{k}\t{v[0]:+0.4f}\t{v[1]:+0.4f}" for k, v in self.idl_coords_after_slew.items())
-        self.output_after.append_stdout(outputstr)
-
+    def _make_final_idl_widget(self, title, initial_x=0., initial_y=0.):
+        """Make a widget for getting a star's RA and Dec"""
+        star_widget = widgets.VBox([
+            widgets.Label(value=title),
+            widgets.VBox([
+                widgets.FloatText(value=initial_x, description='Final IDL X', disabled=False),
+                widgets.FloatText(value=initial_y, description='Final IDL Y', disabled=False)
+            ])
+        ])
+        return star_widget
 
 
     def _parse_other_stars(self) -> list:
         """Parse the entries in the other_stars_widget and return a list"""
         other_stars = []
-        if self.other_stars_widget.value != '':
-            stars = self.other_stars_widget.value.split("\n")
+        if self._other_stars_widget.value != '':
+            stars = self._other_stars_widget.value.split("\n")
             stars = [dict(zip(['label', 'position'], i.split(":"))) for i in stars]
             for star in stars:
                 position = SkyCoord(
@@ -138,18 +118,18 @@ class ComputeOffsets():
         """
         Container method for making and initializing the widgets
         """
-        self.instr_picker = widgets.Dropdown(
+        self._instr_picker = widgets.Dropdown(
             options = instruments,
             value = initial_values.get('instr', instruments[0]).upper(),
             description='Instrument'
         )
-        self.instr_picker.observe(self._update_apers)
+        self._instr_picker.observe(self._update_apers)
         # set self.acq_apers and self.sci_apers
-        self.acq_aper_picker = widgets.Dropdown(description='ACQ aperture')
-        self.sci_aper_picker = widgets.Dropdown(description='SCI aperture')
+        self._acq_aper_picker = widgets.Dropdown(description='ACQ aperture')
+        self._sci_aper_picker = widgets.Dropdown(description='SCI aperture')
         self._update_apers(initial_values=initial_values)
         # Position Angle
-        self.PA_setter = widgets.BoundedFloatText(
+        self._PA_setter = widgets.BoundedFloatText(
             value=initial_values.get("pa", 0),
             min=0.,
             max=360.,
@@ -157,68 +137,152 @@ class ComputeOffsets():
             description='PA (deg):',
             disabled=False
         )
+        self._slew_to_this_idl = self._make_final_idl_widget(
+            "Slew to this IDL",
+            initial_x = initial_values.get("final_idl_x", 0.),
+            initial_y = initial_values.get("final_idl_y", 0.),
+        )
         # star positions
-        self.acq_pos_widget = self.make_starpos_widget(
+        self._acq_pos_widget = self._make_starpos_widget(
             "ACQ target position",
             initial_ra = initial_values.get("acq_ra", 0.),
             initial_dec = initial_values.get("acq_dec", 0.),
         )
-        self.sci_pos_widget = self.make_starpos_widget(
+        self._sci_pos_widget = self._make_starpos_widget(
             "SCI target position",
             initial_ra = initial_values.get("sci_ra", 0.),
             initial_dec = initial_values.get("sci_dec", 0.)
         )
-        self.other_stars_widget = widgets.Textarea(
+        self._other_stars_widget = widgets.Textarea(
             value=initial_values.get("other_stars", ''),
             placeholder='label : (ra.deg, dec.deg)',
             description='Other stars: ',
             disabled=False,
         )
 
-        self.compute_offsets_button = widgets.Button(
+        self._compute_offsets_button = widgets.Button(
             description='Compute offset',
             disabled=False,
             button_style='success'
         )
-        self.compute_offsets_button.on_click(self._compute_offsets)
-        self.output_offset = widgets.Output()
-        self.output_before = widgets.Output()
-        self.output_after = widgets.Output()
+        self._compute_offsets_button.on_click(self._compute_offsets)
+        self._plot_scene_button = widgets.Button(
+            description = 'Plot scenes',
+            disabled=False,
+            button_style = 'info'
+        )
+        self._plot_scene_button.on_click(self._plot_scene)
+
+        self._output_offset = widgets.Output()
+        self._output_before = widgets.Output()
+        self._output_after = widgets.Output()
 
     def _make_ui(self):
-        self._make_widgets(self.initial_values)
+        self._make_widgets(self._initial_values)
         grid = widgets.GridspecLayout(
-            n_rows=8, n_columns=3,
+            n_rows=9, n_columns=3,
             style=dict(background='white')
         )
         grid[0, :] = widgets.Label(
             value="IDL Coordinate and Offset TA Calculator".upper(),
             layout = widgets.Layout(display='flex', justify_content='center'),
         )
-        grid[1, 0] = self.instr_picker
-        grid[2, 0] = self.sci_aper_picker
-        grid[4, 0] = self.PA_setter
+        grid[1, 0] = self._instr_picker
+        grid[2, 0] = self._sci_aper_picker
+        grid[4, 0] = self._PA_setter
+        grid[5:8, 0] = self._slew_to_this_idl
 
-        grid[1:4, 1] = self.acq_pos_widget
-        grid[4:7, 1] = self.sci_pos_widget
+        grid[1:4, 1] = self._acq_pos_widget
+        grid[4:7, 1] = self._sci_pos_widget
 
-        grid[1:-1, 2] = self.other_stars_widget
+        grid[1:-1, 2] = self._other_stars_widget
 
-        grid[-1, 0] = self.compute_offsets_button
+        grid[-1, 0] = widgets.HBox([self._compute_offsets_button, self._plot_scene_button])
         output_grid = widgets.GridspecLayout(
             n_rows=1, n_columns=3,
         )
-        output_grid[0, 0] = self.output_offset
-        output_grid[0, 1] = self.output_before
-        output_grid[0, 2] = self.output_after
+        output_grid[0, 0] = self._output_offset
+        output_grid[0, 1] = self._output_before
+        output_grid[0, 2] = self._output_after
         ui = widgets.VBox([
             grid, output_grid
             # widgets.HBox([, self.output_before, self.output_after]),
         ])
         return ui
 
+    def _plot_scene(self, *args):
+        fig,axes = plt.subplots(nrows=1, ncols=2)
+        fig = plot_aper_idl(
+            self._get_aper(),
+            self.idl_coords_after_ta,
+            ax = axes[0],
+            title='Before slew',
+        )
+
+        fig = plot_aper_idl(
+            self._get_aper(),
+            self.idl_coords_after_slew,
+            ax = axes[1],
+            title='After slew',
+        )
+        return fig
+
     def show_ui(self):
         return self.ui
+
+    def _compute_offsets(self, *args):
+        acq_pos = {
+            'label': 'ACQ',
+            'position': SkyCoord(
+                self._acq_pos_widget.children[1].children[0].value,
+                self._acq_pos_widget.children[1].children[1].value,
+                frame='icrs', unit='deg',
+            ),
+        }
+        sci_pos = {
+            'label': 'SCI',
+            'position': SkyCoord(
+                self._sci_pos_widget.children[1].children[0].value,
+                self._sci_pos_widget.children[1].children[1].value,
+                frame='icrs', unit='deg',
+            )
+        }
+
+        v3pa = self._PA_setter.value
+        aperture = Siaf(self._instr_picker.value)[self._sci_aper_picker.value]
+
+        other_stars = self._parse_other_stars()
+        slew_to_idl = np.array([
+            self._slew_to_this_idl.children[1].children[0].value,
+            self._slew_to_this_idl.children[1].children[1].value,
+        ])
+
+        idl_coords = compute_idl_after_ta(
+            acq_pos, sci_pos, v3pa, aperture,
+            other_stars = other_stars,
+        )
+        self.idl_coords_after_ta = {i['label']: i['position'] for i in idl_coords}
+        self.offset_to_sci = -self.idl_coords_after_ta['SCI'] + slew_to_idl
+        self.idl_coords_after_slew = {
+            k: v + self.offset_to_sci
+            for k, v in self.idl_coords_after_ta.items()
+        }
+
+        self._output_offset.clear_output()
+        self._output_before.clear_output()
+        self._output_after.clear_output()
+        outputstr = "Special Requirement -> Offset values\n"
+        outputstr += "-"*(len(outputstr)-1) + "\n"
+        outputstr += f"Offset X [arcsec]: {self.offset_to_sci[0]:+0.4f}\nOffset Y [arcsec]: {self.offset_to_sci[1]:+0.4f}"
+        self._output_offset.append_stdout(outputstr)
+        outputstr = f"IDL positions of stars after TA:\n"
+        outputstr += "-"*(len(outputstr)-1) + "\n"
+        outputstr += "\n".join(f"{k}\t{v[0]:+0.4f}\t{v[1]:+0.4f}" for k, v in self.idl_coords_after_ta.items())
+        self._output_before.append_stdout(outputstr)
+        outputstr = f"IDL positions of stars after slew:\n"
+        outputstr += "-"*(len(outputstr)-1) + "\n"
+        outputstr += "\n".join(f"{k}\t{v[0]:+0.4f}\t{v[1]:+0.4f}" for k, v in self.idl_coords_after_slew.items())
+        self._output_after.append_stdout(outputstr)
 
 
 #------------------------------------------------------#
@@ -584,30 +648,6 @@ def work_backwards(
 #----------------- Plotting -----------------#
 #--------------------------------------------#
 
-def plot_apers(
-        ax,
-        attmat,
-        aper_dict,
-        format_dict={}
-):
-    """
-    Helper function to plot the apertures for a given part of the TA sequence
-    ax : axis to plot on
-    attmat : attitude matrix
-    aper_dict : dictionary of apertures to plot
-    format_dict : aperture plot formatting parameters
-    """
-    for k, aper in aper_dict.items():
-        aper.set_attitude_matrix(attmat)
-        format_thisaper = format_dict.copy()
-        if k == 'mask':
-            format_thisaper['mark_ref'] = True
-        if k == 'coro':
-            # skip the illuminated region aperture, it's too crowded
-            pass
-        else:
-            aper.plot(ax=ax, label=False, frame='sky', fill=False, **format_thisaper)
-
 def plot_before_offset_slew(
         aper_dict : dict,
         idl_coords : list,
@@ -650,12 +690,12 @@ def plot_before_offset_slew(
     return fig
 
 
-def plot_after_offset_slew(
-        aper_dict : dict,
-        idl_coords : list,
-        offset : np.ndarray,
-        star_positions : list =[],
+def plot_aper_idl(
+        aper : pysiaf.aperture.JwstAperture,
+        star_positions : dict[str, np.ndarray] = {},
+        offset : list | np.ndarray = [0., 0.],
         ax = None,
+        title = '',
 ):
     """Plot the scene on the detector when you're pointed at the science target"""
     # plot 1 : POV of the detector
@@ -663,30 +703,32 @@ def plot_after_offset_slew(
         fig, ax = plt.subplots(1, 1, layout='constrained')
     else:
         fig = ax.get_figure()
-    if star_positions != []:
-        title = f"{star_positions[0]['label']} --> {star_positions[1]['label']}"
-        fig.suptitle(title)
-    ax.set_title("""Positions *after* offset slew""")
     frame = 'idl' # options are: tel (telescope), det (detector), sci (aperture)
-    aper_dict['mask'].plot(ax=ax, label=False, frame=frame, c='C0')
-    aper_dict['coro'].plot(ax=ax, label=False, frame=frame, c='C1', mark_ref=True)
+    if title != '':
+        ax.set_title(title)
+    aper.plot(ax=ax, label=False, frame=frame, c='C0')
 
-    ax.scatter(0 + offset[0], 0 + offset[1],
+    offset = np.array(offset)
+    star_positions = star_positions.copy()
+    acq_pos = star_positions.pop('ACQ')
+    ax.scatter(acq_pos[0] + offset[0], acq_pos[1] + offset[1],
                c='k',
-               label=f"ACQ/{idl_coords[0]['label']}",
+               label=f"ACQ",
                marker='x',
                s=100)
-    ax.scatter(*(idl_coords[1]['position'] + offset),
-               label=f"SCI/{idl_coords[1]['label']}",
+    sci_pos = star_positions.pop("SCI")
+    ax.scatter(*(sci_pos+ offset),
+               label=f"SCI",
                marker="*",
                c='k')
-    for star in idl_coords[2:]:
-        ax.scatter(*(star['position'] + offset),
+    for star, position in star_positions.items():
+        ax.scatter(*(position + offset),
                    # c='k',
-                   label=star['label'],
+                   label=star,
                    marker='.',
                    s=50)
-    ax.add_artist(quad_boundaries(aper_dict['coro'], kwargs={'fc': 'grey'}))
+    if aper.AperName[-4:] in ['1065', '1140', '1550']:
+        ax.add_artist(quad_boundaries(aper, kwargs={'fc': 'grey'}))
     ax.legend()
     ax.set_aspect("equal")
     ax.grid(True, ls='--', c='grey', alpha=0.5)
