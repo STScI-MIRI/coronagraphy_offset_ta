@@ -32,7 +32,7 @@ from pysiaf import Siaf
 
 # define user interface
 
-instruments = ['NIRCam', 'NIRSpec', 'NIRISS', 'MIRI', 'FGS']
+instruments = ['NIRCAM', 'NIRSPEC', 'NIRISS', 'MIRI', 'FGS']
 
 class ComputeOffsets():
     def __init__(self, initial_values={}):
@@ -64,7 +64,7 @@ class ComputeOffsets():
     def make_starpos_widget(self, title, initial_ra=0., initial_dec=0.):
         star_widget = widgets.VBox([
             widgets.Label(value=title),
-            widgets.HBox([
+            widgets.VBox([
                 widgets.FloatText(value=initial_ra, description='RA [deg]', disabled=False),
                 widgets.FloatText(value=initial_dec, description='Dec [deg]', disabled=False)
             ])
@@ -207,7 +207,7 @@ class ComputeOffsets():
         ])
         return ui
 
-    def get_ui(self):
+    def show_ui(self):
         return self.ui
 
 
