@@ -46,6 +46,9 @@ class ComputeOffsets():
         self._initial_values = initial_values
         self._current_values = {k: v for k, v in initial_values.items()}
         self.ui = self._make_ui()
+        # if an initial dictionary is provided, run the computations.
+        if initial_values != {}:
+            self._compute_offsets()
 
     def _update_apers(self, *args, initial_values={}):
         self._acq_apers = [i for i in Siaf(self._instr_picker.value).apernames if '_TA' in i]
@@ -197,7 +200,8 @@ class ComputeOffsets():
 
         grid[1:-1, 2] = self._other_stars_widget
 
-        grid[-1, 0] = widgets.HBox([self._compute_offsets_button, self._plot_scene_button])
+        # place the buttons at the bottom of the central column
+        grid[-1, 1] = widgets.HBox([self._compute_offsets_button, self._plot_scene_button])
         output_grid = widgets.GridspecLayout(
             n_rows=1, n_columns=3,
         )
@@ -277,11 +281,11 @@ class ComputeOffsets():
         self._output_offset.append_stdout(outputstr)
         outputstr = f"IDL positions of stars after TA:\n"
         outputstr += "-"*(len(outputstr)-1) + "\n"
-        outputstr += "\n".join(f"{k}\t{v[0]:+0.4f}\t{v[1]:+0.4f}" for k, v in self.idl_coords_after_ta.items())
+        outputstr += "\n".join(f"{k}\t{v[0]:>+10.4f}\t{v[1]:>+10.4f}" for k, v in self.idl_coords_after_ta.items())
         self._output_before.append_stdout(outputstr)
         outputstr = f"IDL positions of stars after slew:\n"
         outputstr += "-"*(len(outputstr)-1) + "\n"
-        outputstr += "\n".join(f"{k}\t{v[0]:+0.4f}\t{v[1]:+0.4f}" for k, v in self.idl_coords_after_slew.items())
+        outputstr += "\n".join(f"{k}\t{v[0]:>+10.4f}\t{v[1]:>+10.4f}" for k, v in self.idl_coords_after_slew.items())
         self._output_after.append_stdout(outputstr)
 
 
@@ -937,138 +941,6 @@ def plot_sky_ta_sequence(aper_dict, star_positions, v3pa, offset, colors, axes=N
 
     return fig
 
-
-def plot_observing_sequence(
-        aper_dict : dict,
-        ta_sequence : dict,
-        v3pa : float,
-        idl_coords : list,
-        star_positions : list,
-        offset : np.ndarray,
-) -> mpl.figure.Figure :
-    """
-    Plot the observing sequence both from the detector POV and the sky POV.
-
-    Parameters
-    ----------
-    aper_dict : dict
-      a dictionary of the various Siaf apertures to plot
-    ta_sequence : dict
-      a dictionary containing the IDL coordinates of the targets in the science
-      aperture at each stage of the TA sequence
-    v3pa : float
-      the v3pa angle of the aperture at the time of observation
-    idl_coords : ??
-      ??
-    star_positions : list
-      a list of sky positions for each star
-    offset : np.ndarray[float]
-      The x, y IDL offset that will be applied after TA
-
-    Output
-    ------
-    fig : mpl.figure.Figure
-      A figure containing the plot of each step of the TA sequence.
-      The top row is in the detector frame, the bottom row is in the sky frame
-
-    """
-    nrows = 2 # top row: detector, bottom row: sky
-    ncols = 4 # outer, inner, centered, slew
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols,
-                             layout='constrained',
-                             sharex='row', sharey='row')
-
-    # plot the sequence from the POV of the detector
-    fig = plot_detector_ta_sequence(aper_dict, ta_sequence, idl_coords, star_positions, axes[0])
-    # plot the sequence from the POV of the sky
-    colors = mpl.cm.plasma(np.linspace(0.2, 0.9, 4))
-    fig = plot_sky_ta_sequence(aper_dict, star_positions, v3pa, offset, colors, axes[1])
-
-    return fig
-
-def plot_sky_ta_sequence_one_axis(aper_dict, star_positions, v3pa, offset, colors):
-    """Plot the TA sequence on the sky, all on one axis"""
-    nrows = 1
-    ncols = 1
-    fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=(15, 5), layout='constrained')
-
-    targ_label = f"{star_positions[0]['label']} --> {star_positions[1]['label']}"
-    fig.suptitle(f"{targ_label}\nTA sequence, in RA/Dec")
-
-    colors = mpl.cm.plasma_r(np.linspace(0.2, 0.9, 4))
-
-    acq_pos = (star_positions[0]['position'].ra.deg, star_positions[0]['position'].dec.deg)
-    sci_pos = (star_positions[1]['position'].ra.deg, star_positions[1]['position'].dec.deg)
-    other_pos = [(star['position'].ra.deg, star['position'].dec.deg) for star in star_positions[2:]]
-    ax.scatter(*acq_pos,
-               c='k',
-               label=f"ACQ/{star_positions[0]['label']}",
-               marker='x',
-               s=100)
-    ax.scatter(*sci_pos,
-               c='k',
-               label=f"SCI/{star_positions[1]['label']}",
-               marker='*',
-               s=100)
-    for pos in other_pos:
-        ax.scatter(*pos,
-                   marker='.',
-                   s=50)
-
-
-    # We start TA in the outer TA region
-    attmat = create_attmat(star_positions[0]['position'], aper_dict['UR'], v3pa)
-    formatting = dict(c=colors[0], alpha=1, ls='dotted')
-    plot_apers(ax, attmat, aper_dict, formatting)
-    ax.plot([], [], 
-            **formatting,
-            label='Step 1: Outer TA step')
-
-
-    # Continue to step 2 of TA, in the inner TA region
-    attmat = create_attmat(star_positions[0]['position'], aper_dict['CUR'], v3pa)
-    formatting = dict(c=colors[1], alpha=1, ls='dashdot')
-    plot_apers(ax, attmat, aper_dict, formatting)
-    ax.plot([], [], 
-            **formatting,
-            label='Step 2: Inner TA step')    
-
-
-    # plot the final TA before the offset is applied
-    # the telescope is now pointing the center of the coronagraph at the TA star
-    attmat = create_attmat(star_positions[0]['position'], aper_dict['coro'], v3pa)
-    formatting = dict(c=colors[2], alpha=1, ls='dashed')
-    plot_apers(ax, attmat, aper_dict, formatting)
-    ax.plot([], [],
-            **formatting,
-            label='Step 3: Before offset')
-
-
-    # the telescope now places the TA star at the commanded offset
-    # note that you must CHANGE THE SIGN OF THE OFFSET to get the position of the reference point
-    ra, dec = aper_dict['coro'].idl_to_sky(*(-offset))
-    tel_sky = SkyCoord(ra=ra, dec=dec, unit='deg', frame='icrs')
-    attmat = create_attmat(tel_sky, aper_dict['coro'], v3pa)
-
-    formatting = dict(c=colors[3], alpha=1, ls='solid')
-    plot_apers(ax, attmat, aper_dict, formatting)
-    ax.plot([], [],
-            **formatting,
-            label='Step 4: After offset')
-
-
-    # plot formatting
-    ax.set_ylabel("Dec [deg]")
-    ax.set_xlabel("RA [deg]")
-    ax.set_aspect("equal")
-    ax.grid(True, ls='--', c='grey', alpha=0.5)
-    # fix x-axis labels
-    ax.xaxis.set_major_formatter(ticker.FormatStrFormatter('%0.2f'))
-    ax.legend()
-    # RA increases to the left
-    ax.invert_xaxis()
-
-    return fig
 
 
 def make_plots(
