@@ -710,7 +710,7 @@ def plot_aper_idl(
     frame = 'idl' # options are: tel (telescope), det (detector), sci (aperture)
     if title != '':
         ax.set_title(title)
-    aper.plot(ax=ax, label=False, frame=frame, c='C0')
+    aper.plot(ax=ax, label=False, frame=frame, c='k', mark_ref=True)
 
     offset = np.array(offset)
     star_positions = star_positions.copy()

@@ -8,6 +8,14 @@ Author: Jonathan Aguilar Last update: March 6, 2024
 - astropy
 - pySIAF
 
+## ::NEW:: All-Instrument Interface ##
+
+This module now includes a basic graphical interface for computing the IDL
+coordinates of an arbitrary field of sources after centering on one of them, as
+well as the offset command if performing manual offset TA. See
+`./all_jwst_offset_ta/All_Instrument_Notebook.ipynb` for an example using MIRI
+coronagraphy. The user is advised to copy this notebook to a new directory for
+working on their own specific use cases.
 
 ## USAGE ##
 
@@ -155,6 +163,3 @@ angles against dates, as well as a table that can be read into a script.
 Yes, unless your roll angle is very small or your acquisition target is very
 close.
 
-## All-Instrument Interface ##
-
-This module now includes a limited interface for computing the offset for any two targets for an arbitrary aperture in JWST. See `./all_instruments/All_Instrument_Notebook.ipynb`.
