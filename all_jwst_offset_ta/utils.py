@@ -75,7 +75,7 @@ class ComputeOffsets():
         self._current_values['sci_dec'] = self._sci_pos_widget.children[1].children[1].value
         self._current_values['other_stars'] = self._other_stars_widget.value
 
-    def _get_aper(self):
+    def get_aper(self):
         aper = Siaf(self._instr_picker.value)[self._sci_aper_picker.value]
         return aper
 
@@ -217,14 +217,14 @@ class ComputeOffsets():
     def _plot_scene(self, *args):
         fig,axes = plt.subplots(nrows=1, ncols=2)
         fig = plot_aper_idl(
-            self._get_aper(),
+            self.get_aper(),
             self.idl_coords_after_ta,
             ax = axes[0],
             title='Before slew',
         )
 
         fig = plot_aper_idl(
-            self._get_aper(),
+            self.get_aper(),
             self.idl_coords_after_slew,
             ax = axes[1],
             title='After slew',
