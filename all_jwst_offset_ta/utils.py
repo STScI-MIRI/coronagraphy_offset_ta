@@ -76,7 +76,10 @@ class ComputeOffsets():
         self._current_values['other_stars'] = self._other_stars_widget.value
 
     def get_aper(self):
-        aper = Siaf(self._instr_picker.value)[self._sci_aper_picker.value]
+        if hasattr(self, "aperture"):
+            aper = self.aperture
+        else:
+            aper = Siaf(self._instr_picker.value)[self._sci_aper_picker.value]
         return aper
 
     def _make_starpos_widget(self, title, initial_ra=0., initial_dec=0.):
@@ -215,19 +218,32 @@ class ComputeOffsets():
         return ui
 
     def _plot_scene(self, *args):
-        fig,axes = plt.subplots(nrows=1, ncols=2)
+        fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(10, 10), layout='constrained')
         fig = plot_aper_idl(
             self.get_aper(),
             self.idl_coords_after_ta,
-            ax = axes[0],
-            title='Before slew',
+            ax = axes[0, 0],
+            title='Before slew (IDL)',
         )
 
         fig = plot_aper_idl(
             self.get_aper(),
             self.idl_coords_after_slew,
-            ax = axes[1],
-            title='After slew',
+            ax = axes[0, 1],
+            title='After slew (IDL)',
+        )
+        fig = plot_aper_sky(
+            self.get_aper(),
+            self.idl_coords_after_ta,
+            ax = axes[1, 0],
+            title='Before slew (Sky)',
+        )
+
+        fig = plot_aper_sky(
+            self.get_aper(),
+            self.idl_coords_after_slew,
+            ax = axes[1, 1],
+            title='After slew (Sky)',
         )
         return fig
 
@@ -271,6 +287,8 @@ class ComputeOffsets():
             k: v + self.offset_to_sci
             for k, v in self.idl_coords_after_ta.items()
         }
+        self.aperture = self.get_aper()
+        create_attmat(sci_pos['position'], self.aperture, v3pa, set_matrix=True)
 
         self._output_offset.clear_output()
         self._output_before.clear_output()
@@ -296,7 +314,7 @@ def compute_idl_after_ta(
     slew_from: dict,
     slew_to: dict,
     v3pa: float,
-    sci_aper : str,
+    sci_aper : pysiaf.aperture.JwstAperture,
     other_stars : list = [],
 ) -> list[dict]:
     """
@@ -347,7 +365,7 @@ def compute_offsets(
         slew_from: dict,
         slew_to: dict,
         v3pa: float,
-        sci_aper : str,
+        sci_aper : pysiaf.aperture.JwstAperture,
         other_stars : list = [],
         verbose : int = 1,
         return_offsets : bool = False,
@@ -442,7 +460,7 @@ def create_attmat(
         aper : pysiaf.aperture.JwstAperture,
         pa : float,
         idl_offset : tuple[float, float] = (0., 0.),
-        set_matrix : bool = False
+        set_matrix : bool = True,
 ) -> np.ndarray:
     """
     Create an attitude matrix for JWST when the reference point of a particular
@@ -573,49 +591,6 @@ def work_backwards(
 #--------------------------------------------#
 #----------------- Plotting -----------------#
 #--------------------------------------------#
-
-def plot_before_offset_slew(
-        aper_dict : dict,
-        idl_coords : list,
-        star_positions : list =[],
-        ax = None,
-):
-    """Plot the scene on the detector when you're pointed at the acquisition target"""
-    # plot 1 : POV of the detector
-    if ax is None:
-        fig, ax = plt.subplots(1, 1, layout='constrained')
-    else:
-        fig = ax.get_figure()
-    if star_positions != []:
-        title = f"{star_positions[0]['label']} --> {star_positions[1]['label']}"
-        fig.suptitle(title)
-    ax.set_title("""Positions *before* offset slew""")
-    frame = 'idl' # options are: tel (telescope), det (detector), sci (aperture)
-    aper_dict['mask'].plot(ax=ax, label=False, frame=frame, c='C0')
-    aper_dict['coro'].plot(ax=ax, label=False, frame=frame, c='C1', mark_ref=True)
-
-    ax.scatter(0, 0,
-               c='k',
-               label=f"ACQ/{idl_coords[0]['label']}",
-               marker='x',
-               s=100)
-    ax.scatter(*idl_coords[1]['position'],
-               label=f"SCI/{idl_coords[1]['label']}",
-               marker="*",
-               c='k')
-    for star in idl_coords[2:]:
-        ax.scatter(*star['position'],
-                   # c='k',
-                   label=star['label'],
-                   marker='.',
-                   s=50)
-    ax.add_artist(quad_boundaries(aper_dict['coro'], kwargs={'fc': 'grey'}))
-    ax.legend()
-    ax.set_aspect("equal")
-    ax.grid(True, ls='--', c='grey', alpha=0.5)
-    return fig
-
-
 def plot_aper_idl(
         aper : pysiaf.aperture.JwstAperture,
         star_positions : dict[str, np.ndarray] = {},
@@ -632,7 +607,7 @@ def plot_aper_idl(
     frame = 'idl' # options are: tel (telescope), det (detector), sci (aperture)
     if title != '':
         ax.set_title(title)
-    aper.plot(ax=ax, label=False, frame=frame, c='k', mark_ref=True)
+    aper.plot(ax=ax, label=False, frame=frame, c='gray', mark_ref=True)
 
     offset = np.array(offset)
     star_positions = star_positions.copy()
@@ -649,6 +624,58 @@ def plot_aper_idl(
                c='k')
     for star, position in star_positions.items():
         ax.scatter(*(position + offset),
+                   # c='k',
+                   label=star,
+                   marker='.',
+                   s=50)
+    if aper.AperName[-4:] in ['1065', '1140', '1550']:
+        ax.add_artist(quad_boundaries(aper, kwargs={'fc': 'grey'}))
+    ax.legend()
+    ax.set_aspect("equal")
+    ax.grid(True, ls='--', c='grey', alpha=0.5)
+    return fig
+
+def plot_aper_sky(
+        aper : pysiaf.aperture.JwstAperture,
+        star_positions : dict[str, np.ndarray] = {},
+        offset : list | np.ndarray = [0., 0.],
+        ax = None,
+        title = '',
+):
+    """Plot the scene on the detector when you're pointed at the science target"""
+    # plot 1 : POV of the detector
+    if ax is None:
+        fig, ax = plt.subplots(1, 1, layout='constrained')
+    else:
+        fig = ax.get_figure()
+    frame = 'sky' # options are: tel (telescope), det (detector), sci (aperture)
+    if title != '':
+        ax.set_title(title)
+    aper.plot(ax=ax, label=False, frame=frame, c='gray', mark_ref=True)
+    ax.set_xlabel("RA [deg]")
+    ax.set_ylabel("Dec [deg]")
+
+    offset = np.array(offset)
+    star_positions = star_positions.copy()
+    acq_pos = star_positions.pop('ACQ')
+    acq_pos = np.array(acq_pos) + np.array(offset)
+    acq_pos = aper.idl_to_sky(*acq_pos)
+    ax.scatter(*acq_pos,
+               c='k',
+               label=f"ACQ",
+               marker='x',
+               s=100)
+    sci_pos = star_positions.pop("SCI")
+    sci_pos = np.array(sci_pos) + np.array(offset)
+    sci_pos = aper.idl_to_sky(*sci_pos)
+    ax.scatter(*sci_pos,
+               label=f"SCI",
+               marker="*",
+               c='k')
+    for star, position in star_positions.items():
+        position = np.array(position) + np.array(offset)
+        position = aper.idl_to_sky(*position)
+        ax.scatter(*position, 
                    # c='k',
                    label=star,
                    marker='.',
