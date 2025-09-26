@@ -269,7 +269,7 @@ class ComputeOffsets():
         }
 
         v3pa = self._PA_setter.value
-        aperture = Siaf(self._instr_picker.value)[self._sci_aper_picker.value]
+        self.aperture = Siaf(self._instr_picker.value)[self._sci_aper_picker.value]
 
         other_stars = self._parse_other_stars()
         slew_to_idl = np.array([
@@ -278,7 +278,7 @@ class ComputeOffsets():
         ])
 
         idl_coords = compute_idl_after_ta(
-            acq_pos, sci_pos, v3pa, aperture,
+            acq_pos, sci_pos, v3pa, self.aperture,
             other_stars = other_stars,
         )
         self.idl_coords_after_ta = {i['label']: i['position'] for i in idl_coords}
@@ -287,7 +287,6 @@ class ComputeOffsets():
             k: v + self.offset_to_sci
             for k, v in self.idl_coords_after_ta.items()
         }
-        self.aperture = self.get_aper()
         create_attmat(sci_pos['position'], self.aperture, v3pa, set_matrix=True)
 
         self._output_offset.clear_output()
