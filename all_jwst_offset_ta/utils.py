@@ -52,7 +52,7 @@ class ComputeOffsets():
 
     def _update_apers(self, *args, initial_values={}):
         self._acq_apers = [i for i in Siaf(self._instr_picker.value).apernames if '_TA' in i]
-        self._sci_apers = [i for i in Siaf(self._instr_picker.value).apernames if '_TA' not in i]
+        self._sci_apers = [i for i in Siaf(self._instr_picker.value).apernames]# if '_TA' not in i]
         self._acq_aper_picker.options = self._acq_apers
         self._sci_aper_picker.options = self._sci_apers
 
