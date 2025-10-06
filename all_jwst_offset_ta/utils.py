@@ -684,6 +684,7 @@ def plot_aper_sky(
     ax.legend()
     ax.set_aspect("equal")
     ax.grid(True, ls='--', c='grey', alpha=0.5)
+    ax.invert_xaxis()
     return fig
 
 
