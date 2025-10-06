@@ -17,7 +17,18 @@ well as the offset command if performing manual offset TA. See
 coronagraphy. The user is advised to copy this notebook to a new directory for
 working on their own specific use cases.
 
-## USAGE ##
+### All-Instrument Interface Usage ###
+
+The "All-Instrument Interface" is much easier to use than the previous script-based version. Some highlights, while the README is slowly updated:
+1. This is GUI-based, instead of script-based.
+2. Any aperture can be chosen from any instrument. No help is given to the user to figure out which apertures are the correct ones to use. Ask an experienced JWST user (_very_ experienced).
+3. An initialization dictionary can be provided. If none is, the GUI will initialize with default values. Initialization dictionaries are useful for repeatability.
+4. The SCI and ACQ target positions are intended for use with offset target acquisition (that is, TA is performed on a different target from the science target).
+  - If performing self-TA, use the same coordinates for the ACQ and SCI position fields.
+  - the `acq_ra` and `acq_dec` fields can be omitted from the initialization dictionary, in which case the SCI target positions will be copied over.
+5. If you want your SCI star to land somewhere in the aperture other than the reference position, enter this in arcsec into the "Final IDL X" and "Final IDL Y" positions. Read these as, "This is the final position (in IDL X and Y) where I want my SCI target to end up"., enter this in arcsec into the "Final IDL X" and "Final IDL Y" positions. Read these fields as, "This is the final position (in IDL X and Y) where I want my SCI target to end up".
+
+## (Old format) USAGE ##
 
 This library is meant to help users compute offsets in the detector frame of
 reference to enter into APT as Offset Special Requirements, in the case that
