@@ -11,27 +11,13 @@ from astropy import units
 import pysiaf
 from pysiaf import Siaf
 
+import ipywidgets as widgets
 
 #------------------------------------------------------#
 #----------------- Offset Computation -----------------#
 #------------------------------------------------------#
-import numpy as np
-
-import matplotlib as mpl
-from matplotlib import pyplot as plt
-import matplotlib.ticker as ticker
-from matplotlib.patches import Polygon
-
-import ipywidgets as widgets
-
-from astropy.coordinates import SkyCoord
-from astropy import units
-
-import pysiaf
-from pysiaf import Siaf
 
 # define user interface
-
 instruments = ['NIRCAM', 'NIRSPEC', 'NIRISS', 'MIRI', 'FGS']
 
 class ComputeOffsets():
