@@ -31,8 +31,8 @@ class ComputeOffsets():
         """
         self._initial_values = initial_values
         # if no acq star coordinates are given, copy the sci star
-        self._initial_values['acq_ra'] = initial_values.get("acq_ra", initial_values["sci_ra"])
-        self._initial_values['acq_dec'] = initial_values.get("acq_dec", initial_values["sci_dec"])
+        self._initial_values['acq_ra'] = initial_values.get("acq_ra", initial_values.get("sci_ra", 0))
+        self._initial_values['acq_dec'] = initial_values.get("acq_dec", initial_values.get("sci_dec", 0))
         self._current_values = {k: v for k, v in initial_values.items()}
         self.ui = self._make_ui()
         # if an initial dictionary is provided, run the computations.
