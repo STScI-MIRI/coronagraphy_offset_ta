@@ -1,0 +1,26 @@
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = 'miri_coro_offset_ta'
+authors = [
+    {name = 'Jonathan Aguilar', email = 'jaguilar@stsci.edu'},
+]
+description = "Tools for calculating IDL coordinates of a field of targets, and offsets for slewing between them."
+readme = "README.md"
+# Needed to actually package something
+# packages = ['miri_coro_offset_ta', 'all_jwst_offset_ta']
+
+dependencies = [
+    'ipywidgets',
+    'matplotlib',
+    'numpy',
+    'astropy',
+    'pysiaf'
+]
+version = '0.2'
+license = 'MIT'
+keywords = ['jwst', 'target_acquisition','astronomy']
+
+[project.urls]
+Respository = 'https://github.com/STScI-MIRI/coronagraphy_offset_ta'

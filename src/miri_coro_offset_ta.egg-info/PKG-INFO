@@ -1,3 +1,18 @@
+Metadata-Version: 2.4
+Name: miri_coro_offset_ta
+Version: 0.2
+Summary: Tools for calculating IDL coordinates of a field of targets, and offsets for slewing between them.
+Author-email: Jonathan Aguilar <jaguilar@stsci.edu>
+License-Expression: MIT
+Project-URL: Respository, https://github.com/STScI-MIRI/coronagraphy_offset_ta
+Keywords: jwst,target_acquisition,astronomy
+Description-Content-Type: text/markdown
+Requires-Dist: ipywidgets
+Requires-Dist: matplotlib
+Requires-Dist: numpy
+Requires-Dist: astropy
+Requires-Dist: pysiaf
+
 # Offset TA Tools
 
 Author: Jonathan Aguilar (jaguilar@stsci.edu)
