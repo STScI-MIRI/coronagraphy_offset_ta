@@ -24,9 +24,9 @@ working on their own specific use cases.
 There are two ways to use these tools, after downloading the repository: 
 1. Navigate to the top-level directory, and run `pip install .`.
    - This will install two modulest that can be imported with `import all_jwst_offset_ta` or `import miri_coron_offset_ta`. 
-2. Nagivate to the `all_jwst_offset_ta` subfolder and copy the notebook and the `utils.py` module to whatever directory you plan to be working in.
-
-Note that the code inside the `all_jwst_offset_ta` can also be downloaded directly from github to whatever directory you are working in. In that case, the statement to import `utils` must be changed to `import utils`.
+2. Nagivate to the `all_jwst_offset_ta` subfolder and copy the notebook and the `utils.py` module to whatever directory you plan to be working in. 
+   - In this case, the statement to import `utils` must be changed to `import utils`.
+   - These files can also be copied directly from the online repository, without downloading the rest.
 
 ### All-Instrument Interface Usage ###
 
