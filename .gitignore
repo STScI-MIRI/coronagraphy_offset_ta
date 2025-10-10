@@ -3,3 +3,6 @@ __pycache__/*
 /.ipynb_checkpoints/
 */.ipynb_checkpoints/
 /miri_coro_offset_ta.egg-info/
+/src/jwst_offset_ta.egg-info/
+.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
