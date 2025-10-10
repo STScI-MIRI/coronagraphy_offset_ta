@@ -15,13 +15,18 @@ Last update: Oct 10, 2025
 This module now includes a basic graphical interface for computing the IDL
 coordinates of an arbitrary field of sources after centering on one of them, as
 well as the offset command if performing manual offset TA. See
-`./all_jwst_offset_ta/All_Instrument_Notebook.ipynb` for an example using MIRI
+`./src/all_jwst_offset_ta/All_Instrument_Notebook.ipynb` for an example using MIRI
 coronagraphy. The user is advised to copy this notebook to a new directory for
 working on their own specific use cases. 
 
 ### Installation ###
 
-You can either download the whole repository to your computer, navigate to the top-level directory, and run `pip install .`, or you can go to the `all_jwst_offset_ta` subfolder and copy the notebook and the `utils.py` module to whatever directory you plan to be working in.
+There are two ways to use these tools, after downloading the repository: 
+1. Navigate to the top-level directory, and run `pip install .`.
+   - This will install two modulest that can be imported with `import all_jwst_offset_ta` or `import miri_coron_offset_ta`. 
+2. Nagivate to the `all_jwst_offset_ta` subfolder and copy the notebook and the `utils.py` module to whatever directory you plan to be working in.
+
+Note that the code inside the `all_jwst_offset_ta` can also be downloaded directly from github to whatever directory you are working in. In that case, the statement to import `utils` must be changed to `import utils`.
 
 ### All-Instrument Interface Usage ###
 
